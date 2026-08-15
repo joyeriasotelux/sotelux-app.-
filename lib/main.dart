@@ -1,10 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 void main() {
   runApp(const SoteluxApp());
@@ -170,6 +174,99 @@ class _CatalogoHomeState extends State<CatalogoHome> {
         )}';
   }
 
+  Future<Uint8List> _generarPdf() async {
+    final visibles = filtroCategoria == 'Todos'
+        ? piezas
+        : piezas.where((p) => p.categoria == filtroCategoria).toList();
+
+    final doc = pw.Document();
+    final imagenes = <String, pw.MemoryImage>{};
+    for (final p in visibles) {
+      try {
+        final bytes = await File(p.imagePath).readAsBytes();
+        imagenes[p.id] = pw.MemoryImage(bytes);
+      } catch (_) {}
+    }
+
+    final Map<String, List<Pieza>> agrupado = {};
+    for (final p in visibles) {
+      agrupado.putIfAbsent(p.categoria, () => []).add(p);
+    }
+
+    doc.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        build: (context) => [
+          pw.Header(
+            level: 0,
+            child: pw.Text('Catálogo Sotelux Joyería',
+                style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
+          ),
+          for (final entry in agrupado.entries) ...[
+            pw.SizedBox(height: 12),
+            pw.Text(entry.key,
+                style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 8),
+            pw.Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: entry.value.map((p) {
+                final precio = _formatoCOP(p.valorVenta);
+                return pw.Container(
+                  width: 150,
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      if (imagenes[p.id] != null)
+                        pw.Container(
+                          height: 150,
+                          width: 150,
+                          decoration: pw.BoxDecoration(
+                              border: pw.Border.all(color: PdfColors.grey300)),
+                          child: pw.Image(imagenes[p.id]!, fit: pw.BoxFit.cover),
+                        ),
+                      pw.SizedBox(height: 4),
+                      pw.Text(
+                        precio.isEmpty ? 'Consultar precio' : precio,
+                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ],
+      ),
+    );
+
+    return doc.save();
+  }
+
+  Future<void> _compartirCatalogoPdf() async {
+    final bytes = await _generarPdf();
+    await Printing.layoutPdf(
+      onLayout: (format) async => bytes,
+      name: 'catalogo-sotelux.pdf',
+    );
+  }
+
+  Future<void> _preguntarPorPieza(Pieza p) async {
+    final precio = _formatoCOP(p.valorVenta);
+    final codigo = p.id.substring(0, 6);
+    final texto = Uri.encodeComponent(
+      'Hola, me interesa esta pieza:\n'
+      '${p.categoria} — código $codigo\n'
+      'Precio: ${precio.isEmpty ? "consultar" : precio}\n'
+      '¿Está disponible?',
+    );
+    final url = Uri.parse('https://wa.me/573183676909?text=$texto');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
+
+
   Future<void> _abrirWhatsApp() async {
     final visibles = filtroCategoria == 'Todos'
         ? piezas
@@ -251,6 +348,12 @@ class _CatalogoHomeState extends State<CatalogoHome> {
                 setState(() => vistaInterna = false);
               }),
               const Spacer(),
+              if (!vistaInterna)
+                IconButton(
+                  onPressed: _compartirCatalogoPdf,
+                  icon: const Icon(Icons.picture_as_pdf, color: kGold),
+                  tooltip: 'Compartir PDF',
+                ),
               if (!vistaInterna)
                 IconButton(
                   onPressed: _abrirWhatsApp,
@@ -454,17 +557,34 @@ class _CatalogoHomeState extends State<CatalogoHome> {
             )
           else
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text(
-                p.valorVenta.isEmpty
-                    ? 'Consultar precio'
-                    : _formatoCOP(p.valorVenta),
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: kGold,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                ),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+              child: Column(
+                children: [
+                  Text(
+                    p.valorVenta.isEmpty
+                        ? 'Consultar precio'
+                        : _formatoCOP(p.valorVenta),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: kGold,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () => _preguntarPorPieza(p),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        side: const BorderSide(color: Colors.greenAccent),
+                      ),
+                      child: const Text('Preguntar',
+                          style: TextStyle(fontSize: 11, color: Colors.greenAccent)),
+                    ),
+                  ),
+                ],
               ),
             ),
         ],
