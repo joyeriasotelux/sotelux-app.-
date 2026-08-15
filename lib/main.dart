@@ -160,6 +160,43 @@ class _CatalogoHomeState extends State<CatalogoHome> {
     _guardarDatos();
   }
 
+  void _elegirCategoria(Pieza p) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.grey.shade900,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text('Elige la categoría correcta',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+              ...kCategories.map((cat) {
+                return ListTile(
+                  title: Text(cat, style: const TextStyle(color: Colors.white)),
+                  trailing: p.categoria == cat
+                      ? const Icon(Icons.check, color: kGold)
+                      : null,
+                  onTap: () {
+                    setState(() => p.categoria = cat);
+                    _guardarDatos();
+                    Navigator.pop(context);
+                  },
+                );
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   void _eliminar(Pieza p) {
     setState(() => piezas.remove(p));
     _guardarDatos();
@@ -514,7 +551,13 @@ class _CatalogoHomeState extends State<CatalogoHome> {
                 Positioned(
                   left: 6,
                   bottom: 6,
-                  child: _badge(p.categoria, kGold),
+                  child: GestureDetector(
+                    onTap: vistaInterna ? () => _elegirCategoria(p) : null,
+                    child: _badge(
+                      vistaInterna ? '${p.categoria} ✏️' : p.categoria,
+                      kGold,
+                    ),
+                  ),
                 ),
                 if (vistaInterna)
                   Positioned(
