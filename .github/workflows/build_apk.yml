@@ -21,19 +21,15 @@ jobs:
       - name: Generar carpeta Android del proyecto
         run: flutter create --platforms=android --project-name sotelux_app .
 
-      - name: Fijar versiones estables de Kotlin y Android SDK
+      - name: Fijar versión estable de Kotlin
         run: |
           sed -i 's/org.jetbrains.kotlin.android" version "[^"]*"/org.jetbrains.kotlin.android" version "1.9.24"/' android/settings.gradle || true
           sed -i 's/id("org.jetbrains.kotlin.android") version "[^"]*"/id("org.jetbrains.kotlin.android") version "1.9.24"/' android/settings.gradle.kts || true
 
-          for f in android/app/build.gradle android/app/build.gradle.kts; do
-            if [ -f "$f" ]; then
-              echo "--- Editando $f ---"
-              sed -i -E 's/compileSdk(Version)?[[:space:]]*=?[[:space:]]*flutter\.compileSdkVersion/compileSdk = 34/' "$f"
-              sed -i -E 's/targetSdk(Version)?[[:space:]]*=?[[:space:]]*flutter\.targetSdkVersion/targetSdk = 34/' "$f"
-              grep -i "sdk" "$f" || true
-            fi
-          done
+      - name: Reinstalar plataforma Android 35 (corrige jar corrupto del runner)
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --uninstall "platforms;android-35" || true
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-35"
 
       - name: Instalar dependencias
         run: flutter pub get
