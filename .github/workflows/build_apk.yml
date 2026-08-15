@@ -19,7 +19,7 @@ jobs:
           channel: 'stable'
 
       - name: Generar carpeta Android del proyecto
-        run: flutter create --platforms=android .
+        run: flutter create --platforms=android --project-name sotelux_app .
 
       - name: Instalar dependencias
         run: flutter pub get
