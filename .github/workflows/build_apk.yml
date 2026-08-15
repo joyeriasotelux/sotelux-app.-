@@ -27,12 +27,16 @@ jobs:
           sed -i 's/org.jetbrains.kotlin.android" version "[^"]*"/org.jetbrains.kotlin.android" version "1.9.24"/' android/settings.gradle
           sed -i 's#distributionUrl=.*#distributionUrl=https\\://services.gradle.org/distributions/gradle-8.4-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
 
+      - name: Activar plugin de Google Services (Firebase)
+        run: |
+          sed -i '/id "org.jetbrains.kotlin.android" version "1.9.24" apply false/a\    id "com.google.gms.google-services" version "4.4.2" apply false' android/settings.gradle
+          sed -i '/id "dev.flutter.flutter-gradle-plugin"/a\    id "com.google.gms.google-services"' android/app/build.gradle
+          cp firebase-config/google-services.json android/app/google-services.json
+
       - name: Ajustar compileSdk y NDK requeridos por los plugins
         run: |
           sed -i -E 's/^([[:space:]]*)compileSdk(Version)?[[:space:]]*=?[[:space:]]*flutter\.compileSdkVersion.*/\1compileSdk = 35/' android/app/build.gradle
           sed -i -E '/^[[:space:]]*compileSdk = 35/a\    ndkVersion = "25.1.8937393"' android/app/build.gradle
-          echo "=== android/app/build.gradle DESPUÉS ==="
-          cat android/app/build.gradle
 
       - name: Instalar dependencias
         run: flutter pub get
