@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "609137724465",
+    "project_id": "sotelux-app",
+    "storage_bucket": "sotelux-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:609137724465:android:366f851ffc82217f049910",
+        "android_client_info": {
+          "package_name": "com.example.sotelux_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA__HcEZhkKGiK6SCqy24hfGxL7ymBk9KA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
