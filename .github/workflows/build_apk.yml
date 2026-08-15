@@ -21,8 +21,11 @@ jobs:
       - name: Generar carpeta Android del proyecto
         run: flutter create --platforms=android --project-name sotelux_app .
 
-      - name: Actualizar versión de Kotlin
-        run: sed -i 's/org.jetbrains.kotlin.android" version "[^"]*"/org.jetbrains.kotlin.android" version "1.9.22"/' android/settings.gradle
+      - name: Fijar versiones estables de Kotlin y Android SDK
+        run: |
+          sed -i 's/org.jetbrains.kotlin.android" version "[^"]*"/org.jetbrains.kotlin.android" version "1.9.24"/' android/settings.gradle
+          sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 34/' android/app/build.gradle
+          sed -i 's/targetSdkVersion flutter.targetSdkVersion/targetSdkVersion 34/' android/app/build.gradle
 
       - name: Instalar dependencias
         run: flutter pub get
