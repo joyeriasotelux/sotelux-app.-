@@ -520,7 +520,9 @@ class _CatalogoHomeState extends State<CatalogoHome> {
                   Positioned(
                     left: 6,
                     top: 6,
-                    child: _badge(p.proveedor, Colors.grey.shade400),
+                    child: _badge(
+                        '${p.proveedor} · ${p.id.substring(0, 6)}',
+                        Colors.grey.shade400),
                   ),
                 if (vistaInterna)
                   Positioned(
