@@ -21,29 +21,15 @@ jobs:
       - name: Generar carpeta Android del proyecto
         run: flutter create --platforms=android --project-name sotelux_app .
 
-      - name: Mostrar archivos Gradle (diagnóstico)
+      - name: Actualizar AGP, Kotlin y Gradle a versiones compatibles
         run: |
-          echo "=== android/build.gradle ==="
-          cat android/build.gradle 2>/dev/null || echo "(no existe)"
-          echo "=== android/settings.gradle ==="
-          cat android/settings.gradle 2>/dev/null || echo "(no existe)"
-
-      - name: Fijar versión estable de Kotlin (raíz del proyecto)
-        run: |
-          sed -i -E "s/ext\.kotlin_version = ['\"][^'\"]*['\"]/ext.kotlin_version = '1.9.24'/" android/build.gradle || true
-          sed -i 's/org.jetbrains.kotlin.android" version "[^"]*"/org.jetbrains.kotlin.android" version "1.9.24"/' android/settings.gradle || true
-          sed -i 's/id("org.jetbrains.kotlin.android") version "[^"]*"/id("org.jetbrains.kotlin.android") version "1.9.24"/' android/settings.gradle.kts || true
-          echo "=== android/build.gradle DESPUÉS ==="
-          cat android/build.gradle 2>/dev/null || echo "(no existe)"
-
-      - name: Forzar compileSdk y targetSdk a 34
-        run: |
-          for f in android/app/build.gradle android/app/build.gradle.kts; do
-            if [ -f "$f" ]; then
-              sed -i -E 's/^([[:space:]]*)compileSdk(Version)?.*/\1compileSdk = 34/' "$f"
-              sed -i -E 's/^([[:space:]]*)targetSdk(Version)?.*/\1targetSdk = 34/' "$f"
-            fi
-          done
+          sed -i 's/com.android.application" version "[^"]*"/com.android.application" version "8.3.0"/' android/settings.gradle
+          sed -i 's/org.jetbrains.kotlin.android" version "[^"]*"/org.jetbrains.kotlin.android" version "1.9.24"/' android/settings.gradle
+          sed -i 's#distributionUrl=.*#distributionUrl=https\\://services.gradle.org/distributions/gradle-8.4-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
+          echo "=== settings.gradle DESPUÉS ==="
+          cat android/settings.gradle
+          echo "=== gradle-wrapper.properties DESPUÉS ==="
+          cat android/gradle/wrapper/gradle-wrapper.properties
 
       - name: Instalar dependencias
         run: flutter pub get
