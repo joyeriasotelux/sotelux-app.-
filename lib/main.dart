@@ -1,18 +1,16 @@
-import 'dart:convert';
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-
-void main() {
-  runApp(const SoteluxApp());
-}
+import 'package:http/http.dart' as http;
+import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 const kGold = Color(0xFFD4AF37);
 const kBg = Colors.black;
@@ -24,40 +22,43 @@ const List<String> kCategories = [
   'Pulseras',
 ];
 
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  runApp(const SoteluxApp());
+}
+
 class Pieza {
   String id;
-  String imagePath;
+  String imageUrl;
   String proveedor;
   String categoria;
   String costoProveedor;
   String valorVenta;
+  bool stock;
 
   Pieza({
     required this.id,
-    required this.imagePath,
+    required this.imageUrl,
     required this.proveedor,
     required this.categoria,
     this.costoProveedor = '',
     this.valorVenta = '',
+    this.stock = true,
   });
 
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'imagePath': imagePath,
-        'proveedor': proveedor,
-        'categoria': categoria,
-        'costoProveedor': costoProveedor,
-        'valorVenta': valorVenta,
-      };
-
-  factory Pieza.fromJson(Map<String, dynamic> j) => Pieza(
-        id: j['id'],
-        imagePath: j['imagePath'],
-        proveedor: j['proveedor'],
-        categoria: j['categoria'],
-        costoProveedor: j['costoProveedor'] ?? '',
-        valorVenta: j['valorVenta'] ?? '',
-      );
+  factory Pieza.fromDoc(QueryDocumentSnapshot doc) {
+    final d = doc.data() as Map<String, dynamic>;
+    return Pieza(
+      id: doc.id,
+      imageUrl: d['imageUrl'] ?? '',
+      proveedor: d['proveedor'] ?? '',
+      categoria: d['categoria'] ?? 'Anillos',
+      costoProveedor: d['costoProveedor'] ?? '',
+      valorVenta: d['valorVenta'] ?? '',
+      stock: d['stock'] ?? true,
+    );
+  }
 }
 
 String clasificarPieza(String nombreArchivo) {
@@ -102,32 +103,36 @@ class _CatalogoHomeState extends State<CatalogoHome> {
   final ImagePicker _picker = ImagePicker();
   final Uuid _uuid = const Uuid();
   final TextEditingController _proveedorCtrl = TextEditingController();
+  final CollectionReference _col =
+      FirebaseFirestore.instance.collection('piezas');
 
   bool vistaInterna = true;
   String filtroCategoria = 'Todos';
+  bool conectando = true;
+  bool subiendo = false;
 
   @override
   void initState() {
     super.initState();
-    _cargarDatos();
+    _iniciar();
   }
 
-  Future<void> _cargarDatos() async {
-    final prefs = await SharedPreferences.getInstance();
-    final data = prefs.getString('piezas');
-    if (data != null) {
-      final List<dynamic> lista = jsonDecode(data);
+  Future<void> _iniciar() async {
+    try {
+      if (FirebaseAuth.instance.currentUser == null) {
+        await FirebaseAuth.instance.signInAnonymously();
+      }
+    } catch (_) {}
+
+    _col.orderBy('creadoEn', descending: true).snapshots().listen((snap) {
       setState(() {
         piezas.clear();
-        piezas.addAll(lista.map((e) => Pieza.fromJson(e)));
+        piezas.addAll(snap.docs.map((d) => Pieza.fromDoc(d)));
+        conectando = false;
       });
-    }
-  }
-
-  Future<void> _guardarDatos() async {
-    final prefs = await SharedPreferences.getInstance();
-    final data = jsonEncode(piezas.map((p) => p.toJson()).toList());
-    await prefs.setString('piezas', data);
+    }, onError: (_) {
+      setState(() => conectando = false);
+    });
   }
 
   Future<void> _subirFotos() async {
@@ -140,75 +145,56 @@ class _CatalogoHomeState extends State<CatalogoHome> {
     final List<XFile> imgs = await _picker.pickMultiImage();
     if (imgs.isEmpty) return;
 
+    setState(() => subiendo = true);
+
     for (final img in imgs) {
-      final pieza = Pieza(
-        id: _uuid.v4(),
-        imagePath: img.path,
-        proveedor: _proveedorCtrl.text.trim(),
-        categoria: clasificarPieza(img.name),
-      );
-      setState(() => piezas.insert(0, pieza));
+      try {
+        final bytes = await img.readAsBytes();
+        final id = _uuid.v4();
+        final ref = FirebaseStorage.instance.ref('piezas/$id.jpg');
+        await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
+        final url = await ref.getDownloadURL();
+
+        await _col.doc(id).set({
+          'imageUrl': url,
+          'proveedor': _proveedorCtrl.text.trim(),
+          'categoria': clasificarPieza(img.name),
+          'costoProveedor': '',
+          'valorVenta': '',
+          'stock': true,
+          'creadoEn': FieldValue.serverTimestamp(),
+        });
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error al subir una foto: $e')),
+          );
+        }
+      }
     }
-    await _guardarDatos();
+
+    if (mounted) setState(() => subiendo = false);
   }
 
-  void _actualizarPrecio(Pieza p, {String? costo, String? venta}) {
-    setState(() {
-      if (costo != null) p.costoProveedor = costo;
-      if (venta != null) p.valorVenta = venta;
-    });
-    _guardarDatos();
+  Future<void> _actualizarCampo(Pieza p, Map<String, dynamic> valores) async {
+    try {
+      await _col.doc(p.id).update(valores);
+    } catch (_) {}
   }
 
-  void _elegirCategoria(Pieza p) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.grey.shade900,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('Elige la categoría correcta',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              ),
-              ...kCategories.map((cat) {
-                return ListTile(
-                  title: Text(cat, style: const TextStyle(color: Colors.white)),
-                  trailing: p.categoria == cat
-                      ? const Icon(Icons.check, color: kGold)
-                      : null,
-                  onTap: () {
-                    setState(() => p.categoria = cat);
-                    _guardarDatos();
-                    Navigator.pop(context);
-                  },
-                );
-              }),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _eliminar(Pieza p) {
-    setState(() => piezas.remove(p));
-    _guardarDatos();
+  Future<void> _eliminar(Pieza p) async {
+    try {
+      await _col.doc(p.id).delete();
+    } catch (_) {}
   }
 
   String _formatoCOP(String valor) {
     final n = num.tryParse(valor);
     if (n == null || valor.isEmpty) return '';
-    return '\$${n.toStringAsFixed(0).replaceAllMapped(
+    return "\$" + n.toStringAsFixed(0).replaceAllMapped(
           RegExp(r'\B(?=(\d{3})+(?!\d))'),
           (m) => '.',
-        )}';
+        );
   }
 
   Future<Uint8List> _generarPdf() async {
@@ -220,8 +206,10 @@ class _CatalogoHomeState extends State<CatalogoHome> {
     final imagenes = <String, pw.MemoryImage>{};
     for (final p in visibles) {
       try {
-        final bytes = await File(p.imagePath).readAsBytes();
-        imagenes[p.id] = pw.MemoryImage(bytes);
+        final resp = await http.get(Uri.parse(p.imageUrl));
+        if (resp.statusCode == 200) {
+          imagenes[p.id] = pw.MemoryImage(resp.bodyBytes);
+        }
       } catch (_) {}
     }
 
@@ -303,7 +291,6 @@ class _CatalogoHomeState extends State<CatalogoHome> {
     }
   }
 
-
   Future<void> _abrirWhatsApp() async {
     final visibles = filtroCategoria == 'Todos'
         ? piezas
@@ -331,6 +318,42 @@ class _CatalogoHomeState extends State<CatalogoHome> {
     }
   }
 
+  void _elegirCategoria(Pieza p) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.grey.shade900,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text('Elige la categoría correcta',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+              ...kCategories.map((cat) {
+                return ListTile(
+                  title: Text(cat, style: const TextStyle(color: Colors.white)),
+                  trailing: p.categoria == cat
+                      ? const Icon(Icons.check, color: kGold)
+                      : null,
+                  onTap: () {
+                    _actualizarCampo(p, {'categoria': cat});
+                    Navigator.pop(context);
+                  },
+                );
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final visibles = filtroCategoria == 'Todos'
@@ -344,7 +367,12 @@ class _CatalogoHomeState extends State<CatalogoHome> {
             _buildHeader(),
             if (vistaInterna) _buildPanelSubida(),
             _buildTabsCategorias(),
-            Expanded(child: _buildGrid(visibles)),
+            Expanded(
+              child: conectando
+                  ? const Center(
+                      child: CircularProgressIndicator(color: kGold))
+                  : _buildGrid(visibles),
+            ),
           ],
         ),
       ),
@@ -452,9 +480,14 @@ class _CatalogoHomeState extends State<CatalogoHome> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: _subirFotos,
-              icon: const Icon(Icons.upload),
-              label: const Text('Seleccionar fotos'),
+              onPressed: subiendo ? null : _subirFotos,
+              icon: subiendo
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.upload),
+              label: Text(subiendo ? 'Subiendo...' : 'Seleccionar fotos'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: kGold,
                 foregroundColor: Colors.black,
@@ -532,6 +565,7 @@ class _CatalogoHomeState extends State<CatalogoHome> {
   }
 
   Widget _buildCard(Pieza p) {
+    final venta = _formatoCOP(p.valorVenta);
     return Container(
       decoration: BoxDecoration(
         color: Colors.grey.shade900,
@@ -547,7 +581,18 @@ class _CatalogoHomeState extends State<CatalogoHome> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                Image.file(File(p.imagePath), fit: BoxFit.cover),
+                Image.network(
+                  p.imageUrl,
+                  fit: BoxFit.cover,
+                  loadingBuilder: (context, child, progress) {
+                    if (progress == null) return child;
+                    return const Center(
+                        child: CircularProgressIndicator(
+                            color: kGold, strokeWidth: 2));
+                  },
+                  errorBuilder: (context, error, stack) =>
+                      const Icon(Icons.broken_image, color: Colors.grey),
+                ),
                 Positioned(
                   left: 6,
                   bottom: 6,
@@ -567,12 +612,18 @@ class _CatalogoHomeState extends State<CatalogoHome> {
                         '${p.proveedor} · ${p.id.substring(0, 6)}',
                         Colors.grey.shade400),
                   ),
+                if (!p.stock)
+                  const Positioned(
+                    right: 6,
+                    bottom: 6,
+                    child: _StockBadge(),
+                  ),
                 if (vistaInterna)
-                  Positioned(
-                    right: 4,
-                    top: 4,
-                    child: GestureDetector(
-                      onTap: () => _eliminar(p),
+                  GestureDetector(
+                    onTap: () => _eliminar(p),
+                    child: Container(
+                      alignment: Alignment.topRight,
+                      padding: const EdgeInsets.all(4),
                       child: const CircleAvatar(
                         radius: 12,
                         backgroundColor: Colors.black54,
@@ -586,16 +637,33 @@ class _CatalogoHomeState extends State<CatalogoHome> {
           if (vistaInterna)
             Padding(
               padding: const EdgeInsets.all(6),
-              child: Row(
+              child: Column(
                 children: [
-                  Expanded(
-                    child: _precioInput('Costo', p.costoProveedor,
-                        (v) => _actualizarPrecio(p, costo: v)),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _precioInput('Costo', p.costoProveedor,
+                            (v) => _actualizarCampo(p, {'costoProveedor': v})),
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: _precioInput('Venta', p.valorVenta,
+                            (v) => _actualizarCampo(p, {'valorVenta': v})),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: _precioInput('Venta', p.valorVenta,
-                        (v) => _actualizarPrecio(p, venta: v)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('En stock',
+                          style: TextStyle(color: Colors.grey, fontSize: 11)),
+                      Switch(
+                        value: p.stock,
+                        activeColor: kGold,
+                        onChanged: (v) =>
+                            _actualizarCampo(p, {'stock': v}),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -606,9 +674,7 @@ class _CatalogoHomeState extends State<CatalogoHome> {
               child: Column(
                 children: [
                   Text(
-                    p.valorVenta.isEmpty
-                        ? 'Consultar precio'
-                        : _formatoCOP(p.valorVenta),
+                    venta.isEmpty ? 'Consultar precio' : venta,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: kGold,
@@ -620,13 +686,22 @@ class _CatalogoHomeState extends State<CatalogoHome> {
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
-                      onPressed: () => _preguntarPorPieza(p),
+                      onPressed: p.stock ? () => _preguntarPorPieza(p) : null,
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 4),
-                        side: const BorderSide(color: Colors.greenAccent),
+                        side: BorderSide(
+                            color: p.stock
+                                ? Colors.greenAccent
+                                : Colors.grey.shade700),
                       ),
-                      child: const Text('Preguntar',
-                          style: TextStyle(fontSize: 11, color: Colors.greenAccent)),
+                      child: Text(
+                        p.stock ? 'Preguntar' : 'Sin inventario',
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: p.stock
+                                ? Colors.greenAccent
+                                : Colors.grey.shade600),
+                      ),
                     ),
                   ),
                 ],
@@ -671,6 +746,23 @@ class _CatalogoHomeState extends State<CatalogoHome> {
           borderSide: BorderSide.none,
         ),
       ),
+    );
+  }
+}
+
+class _StockBadge extends StatelessWidget {
+  const _StockBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.red.shade900.withOpacity(0.85),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: const Text('Agotado',
+          style: TextStyle(fontSize: 9, color: Colors.white)),
     );
   }
 }
