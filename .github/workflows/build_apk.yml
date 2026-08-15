@@ -1,4 +1,4 @@
-name: Build APK
+GUname: Build APK
 
 on:
   push:
@@ -20,6 +20,9 @@ jobs:
 
       - name: Generar carpeta Android del proyecto
         run: flutter create --platforms=android --project-name sotelux_app .
+
+      - name: Actualizar versión de Kotlin
+        run: sed -i 's/org.jetbrains.kotlin.android" version "[^"]*"/org.jetbrains.kotlin.android" version "1.9.22"/' android/settings.gradle
 
       - name: Instalar dependencias
         run: flutter pub get
