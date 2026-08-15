@@ -26,10 +26,18 @@ jobs:
           sed -i 's/org.jetbrains.kotlin.android" version "[^"]*"/org.jetbrains.kotlin.android" version "1.9.24"/' android/settings.gradle || true
           sed -i 's/id("org.jetbrains.kotlin.android") version "[^"]*"/id("org.jetbrains.kotlin.android") version "1.9.24"/' android/settings.gradle.kts || true
 
-      - name: Reinstalar plataforma Android 35 (corrige jar corrupto del runner)
+      - name: Forzar compileSdk y targetSdk a 34 (reemplazo de línea completa)
         run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --uninstall "platforms;android-35" || true
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-35"
+          for f in android/app/build.gradle android/app/build.gradle.kts; do
+            if [ -f "$f" ]; then
+              echo "=== ANTES ($f) ==="
+              grep -n -i "sdk" "$f" || true
+              sed -i -E 's/^([[:space:]]*)compileSdk(Version)?.*/\1compileSdk = 34/' "$f"
+              sed -i -E 's/^([[:space:]]*)targetSdk(Version)?.*/\1targetSdk = 34/' "$f"
+              echo "=== DESPUÉS ($f) ==="
+              grep -n -i "sdk" "$f" || true
+            fi
+          done
 
       - name: Instalar dependencias
         run: flutter pub get
