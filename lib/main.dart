@@ -36,6 +36,10 @@ class Pieza {
   String costoProveedor;
   String valorVenta;
   bool stock;
+  String material;
+  String piedra;
+  String tamanoPiedra;
+  String tamanoTotal;
 
   Pieza({
     required this.id,
@@ -45,6 +49,10 @@ class Pieza {
     this.costoProveedor = '',
     this.valorVenta = '',
     this.stock = true,
+    this.material = '',
+    this.piedra = '',
+    this.tamanoPiedra = '',
+    this.tamanoTotal = '',
   });
 
   factory Pieza.fromDoc(QueryDocumentSnapshot doc) {
@@ -57,7 +65,34 @@ class Pieza {
       costoProveedor: d['costoProveedor'] ?? '',
       valorVenta: d['valorVenta'] ?? '',
       stock: d['stock'] ?? true,
+      material: d['material'] ?? '',
+      piedra: d['piedra'] ?? '',
+      tamanoPiedra: d['tamanoPiedra'] ?? '',
+      tamanoTotal: d['tamanoTotal'] ?? '',
     );
+  }
+}
+
+const List<String> kMateriales = ['Oro', 'Plata'];
+const List<String> kPiedras = [
+  'Ninguna',
+  'Esmeralda en piedra',
+  'Esmeralda en balines',
+  'Cuarzo',
+  'Ónix',
+  'Neopreno',
+];
+
+List<String> tamanosPara(String categoria) {
+  switch (categoria) {
+    case 'Cadenas':
+      return ['45 cm', '50 cm', '60 cm'];
+    case 'Pulseras':
+      return ['19 cm', '20 cm', '21 cm', '22 cm'];
+    case 'Anillos':
+      return ['#5', '#6', '#7', '#8', '#9', '#10', '#11'];
+    default:
+      return [];
   }
 }
 
@@ -162,7 +197,11 @@ class _CatalogoHomeState extends State<CatalogoHome> {
           'costoProveedor': '',
           'valorVenta': '',
           'stock': true,
-          'creadoEn': FieldValue.serverTimestamp(),
+          'material': '',
+          'piedra': '',
+          'tamanoPiedra': '',
+          'tamanoTotal': '',
+          'creadoEn': Timestamp.now(),
         });
       } catch (e) {
         if (mounted) {
@@ -351,6 +390,225 @@ class _CatalogoHomeState extends State<CatalogoHome> {
           ),
         );
       },
+    );
+  }
+
+  void _editarCaracteristicas(Pieza p) {
+    final tamanoPiedraCtrl = TextEditingController(text: p.tamanoPiedra);
+    String material = p.material;
+    String piedra = p.piedra.isEmpty ? 'Ninguna' : p.piedra;
+    String tamanoTotal = p.tamanoTotal;
+    final opcionesTamano = tamanosPara(p.categoria);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.grey.shade900,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(builder: (context, setModalState) {
+          return Padding(
+            padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom, left: 16, right: 16, top: 16),
+            child: SafeArea(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Características de la pieza',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                    const SizedBox(height: 16),
+
+                    const Text('Material', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      children: kMateriales.map((m) {
+                        final activo = material == m;
+                        return ChoiceChip(
+                          label: Text(m),
+                          selected: activo,
+                          selectedColor: kGold,
+                          backgroundColor: Colors.grey.shade800,
+                          labelStyle: TextStyle(color: activo ? Colors.black : Colors.white),
+                          onSelected: (_) => setModalState(() => material = m),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 16),
+
+                    const Text('Piedra / material de la piedra', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: kPiedras.map((pi) {
+                        final activo = piedra == pi;
+                        return ChoiceChip(
+                          label: Text(pi),
+                          selected: activo,
+                          selectedColor: kGold,
+                          backgroundColor: Colors.grey.shade800,
+                          labelStyle: TextStyle(color: activo ? Colors.black : Colors.white, fontSize: 12),
+                          onSelected: (_) => setModalState(() => piedra = pi),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 16),
+
+                    if (piedra != 'Ninguna') ...[
+                      const Text('Tamaño de la piedra o balín (mm)', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: tamanoPiedraCtrl,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: 'Ej. 6 mm',
+                          hintStyle: TextStyle(color: Colors.grey.shade600),
+                          filled: true,
+                          fillColor: Colors.black,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    if (opcionesTamano.isNotEmpty) ...[
+                      Text('Tamaño total (${p.categoria})', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: opcionesTamano.map((t) {
+                          final activo = tamanoTotal == t;
+                          return ChoiceChip(
+                            label: Text(t),
+                            selected: activo,
+                            selectedColor: kGold,
+                            backgroundColor: Colors.grey.shade800,
+                            labelStyle: TextStyle(color: activo ? Colors.black : Colors.white),
+                            onSelected: (_) => setModalState(() => tamanoTotal = t),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          _actualizarCampo(p, {
+                            'material': material,
+                            'piedra': piedra == 'Ninguna' ? '' : piedra,
+                            'tamanoPiedra': piedra == 'Ninguna' ? '' : tamanoPiedraCtrl.text.trim(),
+                            'tamanoTotal': tamanoTotal,
+                          });
+                          Navigator.pop(context);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: kGold,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: const Text('Guardar características'),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              ),
+            ),
+          );
+        });
+      },
+    );
+  }
+
+  void _verGrande(Pieza p) {
+    final venta = _formatoCOP(p.valorVenta);
+    final caracteristicas = <String>[
+      if (p.material.isNotEmpty) p.material,
+      if (p.piedra.isNotEmpty) p.piedra,
+      if (p.tamanoPiedra.isNotEmpty) '${p.tamanoPiedra}',
+      if (p.tamanoTotal.isNotEmpty) 'Tamaño: ${p.tamanoTotal}',
+    ];
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: const EdgeInsets.all(16),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Stack(
+                children: [
+                  Image.network(p.imageUrl, fit: BoxFit.cover),
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: const CircleAvatar(
+                        radius: 14,
+                        backgroundColor: Colors.black54,
+                        child: Icon(Icons.close, size: 16, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(p.categoria.toUpperCase(),
+                        style: const TextStyle(color: kGold, fontSize: 11, letterSpacing: 1)),
+                    const SizedBox(height: 4),
+                    Text(venta.isEmpty ? 'Consultar precio' : venta,
+                        style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                    if (caracteristicas.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(caracteristicas.join(' · '),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
+                    ],
+                    const SizedBox(height: 6),
+                    Text(p.stock ? '● Disponible' : '● Sin inventario',
+                        style: TextStyle(color: p.stock ? Colors.greenAccent : Colors.grey, fontSize: 12)),
+                    if (p.stock) ...[
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _preguntarPorPieza(p);
+                          },
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.greenAccent),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          child: const Text('Preguntar por esta pieza',
+                              style: TextStyle(color: Colors.greenAccent)),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -581,17 +839,20 @@ class _CatalogoHomeState extends State<CatalogoHome> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                Image.network(
-                  p.imageUrl,
-                  fit: BoxFit.cover,
-                  loadingBuilder: (context, child, progress) {
-                    if (progress == null) return child;
-                    return const Center(
-                        child: CircularProgressIndicator(
-                            color: kGold, strokeWidth: 2));
-                  },
-                  errorBuilder: (context, error, stack) =>
-                      const Icon(Icons.broken_image, color: Colors.grey),
+                GestureDetector(
+                  onTap: !vistaInterna ? () => _verGrande(p) : null,
+                  child: Image.network(
+                    p.imageUrl,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return const Center(
+                          child: CircularProgressIndicator(
+                              color: kGold, strokeWidth: 2));
+                    },
+                    errorBuilder: (context, error, stack) =>
+                        const Icon(Icons.broken_image, color: Colors.grey),
+                  ),
                 ),
                 Positioned(
                   left: 6,
@@ -664,6 +925,19 @@ class _CatalogoHomeState extends State<CatalogoHome> {
                             _actualizarCampo(p, {'stock': v}),
                       ),
                     ],
+                  ),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton.icon(
+                      onPressed: () => _editarCaracteristicas(p),
+                      icon: const Icon(Icons.tune, size: 14, color: kGold),
+                      label: const Text('Características',
+                          style: TextStyle(color: kGold, fontSize: 11)),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        minimumSize: const Size(0, 28),
+                      ),
+                    ),
                   ),
                 ],
               ),
