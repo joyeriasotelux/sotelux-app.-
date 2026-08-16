@@ -103,6 +103,16 @@ String formatoLista(String valor) {
   return partes.join(' y ');
 }
 
+String categoriaMaterial(String material) {
+  final set = material.split(',').where((s) => s.trim().isNotEmpty).map((s) => s.trim()).toSet();
+  final tieneOro = set.contains('Oro');
+  final tienePlata = set.contains('Plata');
+  if (tieneOro && tienePlata) return 'Oro y Plata';
+  if (tieneOro) return 'Oro';
+  if (tienePlata) return 'Plata';
+  return '';
+}
+
 String clasificarPieza(String nombreArchivo) {
   int hash = 0;
   for (final r in nombreArchivo.runes) {
@@ -145,11 +155,14 @@ class _CatalogoHomeState extends State<CatalogoHome> {
   final ImagePicker _picker = ImagePicker();
   final Uuid _uuid = const Uuid();
   final TextEditingController _proveedorCtrl = TextEditingController();
+  final TextEditingController _buscarCodigoCtrl = TextEditingController();
   final CollectionReference _col =
       FirebaseFirestore.instance.collection('piezas');
 
   bool vistaInterna = true;
   String filtroCategoria = 'Todos';
+  String busquedaCodigo = '';
+  String filtroMaterial = 'Todos';
   bool conectando = true;
   bool subiendo = false;
 
@@ -633,9 +646,22 @@ class _CatalogoHomeState extends State<CatalogoHome> {
 
   @override
   Widget build(BuildContext context) {
-    final visibles = filtroCategoria == 'Todos'
+    var visibles = filtroCategoria == 'Todos'
         ? piezas
         : piezas.where((p) => p.categoria == filtroCategoria).toList();
+
+    if (vistaInterna && busquedaCodigo.trim().isNotEmpty) {
+      final q = busquedaCodigo.trim().toLowerCase();
+      visibles = visibles
+          .where((p) => p.id.substring(0, 6).toLowerCase().contains(q))
+          .toList();
+    }
+
+    if (!vistaInterna && filtroMaterial != 'Todos') {
+      visibles = visibles
+          .where((p) => categoriaMaterial(p.material) == filtroMaterial)
+          .toList();
+    }
 
     return Scaffold(
       body: SafeArea(
@@ -643,7 +669,9 @@ class _CatalogoHomeState extends State<CatalogoHome> {
           children: [
             _buildHeader(),
             if (vistaInterna) _buildPanelSubida(),
+            if (vistaInterna) _buildBuscadorCodigo(),
             _buildTabsCategorias(),
+            if (!vistaInterna) _buildFiltroMaterial(),
             Expanded(
               child: conectando
                   ? const Center(
@@ -773,6 +801,73 @@ class _CatalogoHomeState extends State<CatalogoHome> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBuscadorCodigo() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: TextField(
+        controller: _buscarCodigoCtrl,
+        style: const TextStyle(color: Colors.white, fontSize: 13),
+        onChanged: (v) => setState(() => busquedaCodigo = v),
+        decoration: InputDecoration(
+          hintText: 'Buscar por código (ej. 4b0f2c)',
+          hintStyle: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+          prefixIcon: const Icon(Icons.search, color: Colors.grey, size: 20),
+          suffixIcon: busquedaCodigo.isEmpty
+              ? null
+              : IconButton(
+                  icon: const Icon(Icons.close, color: Colors.grey, size: 18),
+                  onPressed: () {
+                    _buscarCodigoCtrl.clear();
+                    setState(() => busquedaCodigo = '');
+                  },
+                ),
+          filled: true,
+          fillColor: Colors.grey.shade900,
+          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFiltroMaterial() {
+    final opciones = ['Todos', 'Oro', 'Plata', 'Oro y Plata'];
+    return SizedBox(
+      height: 36,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        itemCount: opciones.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, i) {
+          final op = opciones[i];
+          final activo = filtroMaterial == op;
+          return GestureDetector(
+            onTap: () => setState(() => filtroMaterial = op),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: activo ? kGold : Colors.transparent,
+                border: Border.all(color: activo ? kGold : Colors.grey.shade700),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                op,
+                style: TextStyle(
+                  color: activo ? Colors.black : Colors.grey.shade400,
+                  fontSize: 11,
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
