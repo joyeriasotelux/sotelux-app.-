@@ -811,11 +811,11 @@ class _CatalogoHomeState extends State<CatalogoHome> {
     }
     return GridView.builder(
       padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: 0.72,
+        childAspectRatio: vistaInterna ? 0.56 : 0.72,
       ),
       itemCount: visibles.length,
       itemBuilder: (context, i) => _buildCard(visibles[i]),
