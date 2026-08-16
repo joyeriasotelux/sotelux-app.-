@@ -272,6 +272,18 @@
     padding: 14px;
     font-size: 14px;
   }
+  .ver-catalogo-btn {
+    display: block;
+    width: 100%;
+    margin-top: 10px;
+    padding: 10px;
+    background: transparent;
+    border: 1px solid #444;
+    border-radius: 8px;
+    color: #ccc;
+    font-size: 12px;
+    font-family: inherit;
+  }
 </style>
 </head>
 <body>
@@ -520,8 +532,17 @@ function abrirLightbox(id) {
       ? `<a class="ask-btn" href="${preguntarLink(p)}" target="_blank">Preguntar por esta pieza</a>`
       : ''
     }
+    <button class="ver-catalogo-btn" onclick="verCatalogoCompleto()">Ver catálogo completo →</button>
   `;
   document.getElementById("lightbox").classList.add("open");
+}
+
+function verCatalogoCompleto() {
+  cerrarLightbox();
+  const url = new URL(window.location.href);
+  url.searchParams.delete("pieza");
+  window.history.replaceState({}, "", url);
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function cerrarLightbox() {
