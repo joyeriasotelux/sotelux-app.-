@@ -34,6 +34,7 @@ class Pieza {
   String id;
   String imageUrl;
   String proveedor;
+  String proveedorTelefono;
   String categoria;
   String costoProveedor;
   String valorVenta;
@@ -48,6 +49,7 @@ class Pieza {
     required this.imageUrl,
     required this.proveedor,
     required this.categoria,
+    this.proveedorTelefono = '',
     this.costoProveedor = '',
     this.valorVenta = '',
     this.stock = true,
@@ -63,6 +65,7 @@ class Pieza {
       id: doc.id,
       imageUrl: d['imageUrl'] ?? '',
       proveedor: d['proveedor'] ?? '',
+      proveedorTelefono: d['proveedorTelefono'] ?? '',
       categoria: d['categoria'] ?? 'Anillos',
       costoProveedor: d['costoProveedor'] ?? '',
       valorVenta: d['valorVenta'] ?? '',
@@ -156,6 +159,7 @@ class _CatalogoHomeState extends State<CatalogoHome> {
   final ImagePicker _picker = ImagePicker();
   final Uuid _uuid = const Uuid();
   final TextEditingController _proveedorCtrl = TextEditingController();
+  final TextEditingController _proveedorTelCtrl = TextEditingController();
   final TextEditingController _buscarCodigoCtrl = TextEditingController();
   final CollectionReference _col =
       FirebaseFirestore.instance.collection('piezas');
@@ -171,6 +175,20 @@ class _CatalogoHomeState extends State<CatalogoHome> {
   void initState() {
     super.initState();
     _iniciar();
+    _proveedorCtrl.addListener(_autocompletarTelefonoProveedor);
+  }
+
+  void _autocompletarTelefonoProveedor() {
+    final nombre = _proveedorCtrl.text.trim().toLowerCase();
+    if (nombre.isEmpty || _proveedorTelCtrl.text.trim().isNotEmpty) return;
+
+    for (final p in piezas) {
+      if (p.proveedor.trim().toLowerCase() == nombre &&
+          p.proveedorTelefono.trim().isNotEmpty) {
+        _proveedorTelCtrl.text = p.proveedorTelefono;
+        return;
+      }
+    }
   }
 
   Future<void> _iniciar() async {
@@ -214,6 +232,7 @@ class _CatalogoHomeState extends State<CatalogoHome> {
         await _col.doc(id).set({
           'imageUrl': url,
           'proveedor': _proveedorCtrl.text.trim(),
+          'proveedorTelefono': _proveedorTelCtrl.text.trim(),
           'categoria': clasificarPieza(img.name),
           'costoProveedor': '',
           'valorVenta': '',
@@ -738,6 +757,12 @@ class _CatalogoHomeState extends State<CatalogoHome> {
           .toList();
     }
 
+    final piezaEncontrada = (vistaInterna &&
+            busquedaCodigo.trim().isNotEmpty &&
+            visibles.length == 1)
+        ? visibles.first
+        : null;
+
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -745,6 +770,8 @@ class _CatalogoHomeState extends State<CatalogoHome> {
             _buildHeader(),
             if (vistaInterna) _buildPanelSubida(),
             if (vistaInterna) _buildBuscadorCodigo(),
+            if (piezaEncontrada != null)
+              _buildBotonContactarProveedor(piezaEncontrada),
             _buildTabsCategorias(),
             if (!vistaInterna) _buildFiltroMaterial(),
             Expanded(
@@ -857,6 +884,25 @@ class _CatalogoHomeState extends State<CatalogoHome> {
             ),
           ),
           const SizedBox(height: 8),
+          const Text('WhatsApp del proveedor (opcional)',
+              style: TextStyle(color: Colors.grey, fontSize: 12)),
+          const SizedBox(height: 4),
+          TextField(
+            controller: _proveedorTelCtrl,
+            keyboardType: TextInputType.phone,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: 'Ej. 573001234567',
+              hintStyle: TextStyle(color: Colors.grey.shade600),
+              filled: true,
+              fillColor: Colors.grey.shade900,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
@@ -910,6 +956,46 @@ class _CatalogoHomeState extends State<CatalogoHome> {
         ),
       ),
     );
+  }
+
+  Widget _buildBotonContactarProveedor(Pieza p) {
+    final tieneTelefono = p.proveedorTelefono.trim().isNotEmpty;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: tieneTelefono ? () => _contactarProveedor(p) : null,
+          icon: Icon(Icons.chat,
+              size: 16, color: tieneTelefono ? Colors.greenAccent : Colors.grey),
+          label: Text(
+            tieneTelefono
+                ? 'Contactar a ${p.proveedor}'
+                : 'Sin WhatsApp guardado para ${p.proveedor}',
+            style: TextStyle(
+                color: tieneTelefono ? Colors.greenAccent : Colors.grey,
+                fontSize: 12),
+          ),
+          style: OutlinedButton.styleFrom(
+            side: BorderSide(
+                color: tieneTelefono ? Colors.greenAccent : Colors.grey.shade700),
+            padding: const EdgeInsets.symmetric(vertical: 10),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _contactarProveedor(Pieza p) async {
+    final numero = p.proveedorTelefono.replaceAll(RegExp(r'[^0-9]'), '');
+    final codigo = p.id.substring(0, 6);
+    final texto = Uri.encodeComponent(
+      'Hola, te escribo por la pieza que me enviaste (código $codigo, ${p.categoria}). ¿Sigue disponible?',
+    );
+    final url = Uri.parse('https://wa.me/$numero?text=$texto');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
   }
 
   Widget _buildFiltroMaterial() {
