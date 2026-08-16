@@ -38,21 +38,17 @@ jobs:
           sed -i -E 's/^([[:space:]]*)compileSdk(Version)?[[:space:]]*=?[[:space:]]*flutter\.compileSdkVersion.*/\1compileSdk = 35/' android/app/build.gradle
           sed -i -E '/^[[:space:]]*compileSdk = 35/a\    ndkVersion = "25.1.8937393"' android/app/build.gradle
 
-      - name: Forzar compileSdk 35 en todos los sub-proyectos (plugins de Flutter)
-        run: |
-          cat >> android/build.gradle << 'EOF'
-
-          subprojects {
-              plugins.withId("com.android.library") {
-                  project.android {
-                      compileSdkVersion 35
-                  }
-              }
-          }
-          EOF
-
       - name: Instalar dependencias
         run: flutter pub get
+
+      - name: Forzar compileSdk 35 en los paquetes de Flutter (printing y otros)
+        run: |
+          for f in $HOME/.pub-cache/hosted/pub.dev/*/android/build.gradle; do
+            sed -i -E 's/^([[:space:]]*)compileSdkVersion[[:space:]]+[0-9]+/\1compileSdkVersion 35/' "$f" || true
+            sed -i -E 's/compileSdkVersion flutter\.compileSdkVersion/compileSdkVersion 35/' "$f" || true
+          done
+          echo "=== Verificación en printing ==="
+          cat $HOME/.pub-cache/hosted/pub.dev/printing-*/android/build.gradle | grep -i sdk
 
       - name: Generar ícono de la app
         run: dart run flutter_launcher_icons
