@@ -40,9 +40,12 @@ class Pieza {
   String valorVenta;
   bool stock;
   String material;
+  String gramos;
+  String tallaCadenaPulsera;
+  String tallaAnillo;
   String piedra;
-  String tamanoPiedra;
-  String tamanoTotal;
+  String balineria;
+  String tamanoNumero;
 
   Pieza({
     required this.id,
@@ -54,9 +57,12 @@ class Pieza {
     this.valorVenta = '',
     this.stock = true,
     this.material = '',
+    this.gramos = '',
+    this.tallaCadenaPulsera = '',
+    this.tallaAnillo = '',
     this.piedra = '',
-    this.tamanoPiedra = '',
-    this.tamanoTotal = '',
+    this.balineria = '',
+    this.tamanoNumero = '',
   });
 
   factory Pieza.fromDoc(QueryDocumentSnapshot doc) {
@@ -71,35 +77,49 @@ class Pieza {
       valorVenta: d['valorVenta'] ?? '',
       stock: d['stock'] ?? true,
       material: d['material'] ?? '',
+      gramos: d['gramos'] ?? '',
+      tallaCadenaPulsera: d['tallaCadenaPulsera'] ?? '',
+      tallaAnillo: d['tallaAnillo'] ?? '',
       piedra: d['piedra'] ?? '',
-      tamanoPiedra: d['tamanoPiedra'] ?? '',
-      tamanoTotal: d['tamanoTotal'] ?? '',
+      balineria: d['balineria'] ?? '',
+      tamanoNumero: d['tamanoNumero'] ?? '',
     );
+  }
+
+  List<String> caracteristicasLista() {
+    return [
+      if (material.isNotEmpty) formatoLista(material),
+      if (gramos.isNotEmpty) '$gramos g',
+      if (tallaCadenaPulsera.isNotEmpty) 'Talla: $tallaCadenaPulsera cm',
+      if (tallaAnillo.isNotEmpty) 'Anillo #$tallaAnillo',
+      if (piedra.isNotEmpty) formatoLista(piedra),
+      if (balineria.isNotEmpty) 'Balinería: ${formatoLista(balineria)}',
+      if (tamanoNumero.isNotEmpty) 'Tamaño #$tamanoNumero',
+    ];
   }
 }
 
-const List<String> kMateriales = ['Oro', 'Plata'];
+const List<String> kMateriales = ['Oro 18k', 'Plata ley 925'];
 const List<String> kPiedras = [
-  'Ninguna',
-  'Esmeralda en piedra',
-  'Esmeralda en balines',
+  'Esmeralda',
+  'Diamante',
+  'Moissanita',
+  'Circón',
+  'Rubí',
+  'Amatista',
+  'Zafiro',
+];
+const List<String> kBalineria = [
+  'Oro',
+  'Plata',
+  'Esmeralda',
   'Cuarzo',
   'Ónix',
   'Neopreno',
 ];
+const List<String> kTallasCadenaPulsera = ['19', '20', '21', '22', '23', '45', '50', '60'];
+const List<String> kTamanosNumero = ['3', '4', '5', '6', '7', '8'];
 
-List<String> tamanosPara(String categoria) {
-  switch (categoria) {
-    case 'Cadenas':
-      return ['45 cm', '50 cm', '60 cm'];
-    case 'Pulseras':
-      return ['19 cm', '20 cm', '21 cm', '22 cm'];
-    case 'Anillos':
-      return ['#5', '#6', '#7', '#8', '#9', '#10', '#11'];
-    default:
-      return [];
-  }
-}
 
 String formatoLista(String valor) {
   final partes = valor.split(',').where((s) => s.trim().isNotEmpty).toList();
@@ -108,9 +128,9 @@ String formatoLista(String valor) {
 }
 
 String categoriaMaterial(String material) {
-  final set = material.split(',').where((s) => s.trim().isNotEmpty).map((s) => s.trim()).toSet();
-  final tieneOro = set.contains('Oro');
-  final tienePlata = set.contains('Plata');
+  final texto = material.toLowerCase();
+  final tieneOro = texto.contains('oro');
+  final tienePlata = texto.contains('plata');
   if (tieneOro && tienePlata) return 'Oro y Plata';
   if (tieneOro) return 'Oro';
   if (tienePlata) return 'Plata';
@@ -238,9 +258,12 @@ class _CatalogoHomeState extends State<CatalogoHome> {
           'valorVenta': '',
           'stock': true,
           'material': '',
+          'gramos': '',
+          'tallaCadenaPulsera': '',
+          'tallaAnillo': '',
           'piedra': '',
-          'tamanoPiedra': '',
-          'tamanoTotal': '',
+          'balineria': '',
+          'tamanoNumero': '',
           'creadoEn': Timestamp.now(),
         });
       } catch (e) {
@@ -365,12 +388,7 @@ class _CatalogoHomeState extends State<CatalogoHome> {
                     runSpacing: 14,
                     children: entry.value.map((p) {
                       final precio = _formatoCOP(p.valorVenta);
-                      final caract = <String>[
-                        if (p.material.isNotEmpty) formatoLista(p.material),
-                        if (p.piedra.isNotEmpty) formatoLista(p.piedra),
-                        if (p.tamanoPiedra.isNotEmpty) p.tamanoPiedra,
-                        if (p.tamanoTotal.isNotEmpty) 'Tamaño: ${p.tamanoTotal}',
-                      ].join(' · ');
+                      final caract = p.caracteristicasLista().join(' · ');
                       return pw.Container(
                         width: 155,
                         padding: const pw.EdgeInsets.all(8),
@@ -597,11 +615,16 @@ class _CatalogoHomeState extends State<CatalogoHome> {
   }
 
   void _editarCaracteristicas(Pieza p) {
-    final tamanoPiedraCtrl = TextEditingController(text: p.tamanoPiedra);
     final materialSet = p.material.split(',').where((s) => s.trim().isNotEmpty).map((s) => s.trim()).toSet();
     final piedraSet = p.piedra.split(',').where((s) => s.trim().isNotEmpty).map((s) => s.trim()).toSet();
-    String tamanoTotal = p.tamanoTotal;
-    final opcionesTamano = tamanosPara(p.categoria);
+    final balineriaSet = p.balineria.split(',').where((s) => s.trim().isNotEmpty).map((s) => s.trim()).toSet();
+    final gramosCtrl = TextEditingController(text: p.gramos);
+    final tallaCadenaPulseraCtrl = TextEditingController(text: p.tallaCadenaPulsera);
+    final tallaAnilloCtrl = TextEditingController(text: p.tallaAnillo);
+    String tamanoNumero = p.tamanoNumero;
+
+    Widget seccionTitulo(String texto) => Text(texto,
+        style: const TextStyle(color: Colors.grey, fontSize: 12));
 
     showModalBottomSheet(
       context: context,
@@ -623,12 +646,16 @@ class _CatalogoHomeState extends State<CatalogoHome> {
                   children: [
                     const Text('Características de la pieza',
                         style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                    const SizedBox(height: 4),
+                    Text('Solo se muestra al cliente lo que llenes aquí',
+                        style: TextStyle(color: Colors.grey.shade600, fontSize: 11)),
                     const SizedBox(height: 16),
 
-                    const Text('Material (puedes elegir varios)', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                    seccionTitulo('Material'),
                     const SizedBox(height: 6),
                     Wrap(
                       spacing: 8,
+                      runSpacing: 8,
                       children: kMateriales.map((m) {
                         final activo = materialSet.contains(m);
                         return FilterChip(
@@ -636,7 +663,7 @@ class _CatalogoHomeState extends State<CatalogoHome> {
                           selected: activo,
                           selectedColor: kGold,
                           backgroundColor: Colors.grey.shade800,
-                          labelStyle: TextStyle(color: activo ? Colors.black : Colors.white),
+                          labelStyle: TextStyle(color: activo ? Colors.black : Colors.white, fontSize: 12),
                           onSelected: (sel) => setModalState(() {
                             if (sel) {
                               materialSet.add(m);
@@ -649,7 +676,54 @@ class _CatalogoHomeState extends State<CatalogoHome> {
                     ),
                     const SizedBox(height: 16),
 
-                    const Text('Piedra / material de la piedra (puedes elegir varios)', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                    seccionTitulo('Gramos'),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: gramosCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      style: const TextStyle(color: Colors.white),
+                      decoration: _decoracionCampo('Ej. 5.2'),
+                    ),
+                    const SizedBox(height: 16),
+
+                    seccionTitulo('Talla cadena o pulsera (cm)'),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: kTallasCadenaPulsera.map((t) {
+                        final activo = tallaCadenaPulseraCtrl.text == t;
+                        return ChoiceChip(
+                          label: Text(t),
+                          selected: activo,
+                          selectedColor: kGold,
+                          backgroundColor: Colors.grey.shade800,
+                          labelStyle: TextStyle(color: activo ? Colors.black : Colors.white, fontSize: 12),
+                          onSelected: (_) => setModalState(() => tallaCadenaPulseraCtrl.text = t),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: tallaCadenaPulseraCtrl,
+                      keyboardType: TextInputType.number,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: _decoracionCampo('O escribe otra medida'),
+                      onChanged: (_) => setModalState(() {}),
+                    ),
+                    const SizedBox(height: 16),
+
+                    seccionTitulo('Talla anillo #'),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: tallaAnilloCtrl,
+                      keyboardType: TextInputType.number,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: _decoracionCampo('Ej. 7'),
+                    ),
+                    const SizedBox(height: 16),
+
+                    seccionTitulo('Piedra'),
                     const SizedBox(height: 6),
                     Wrap(
                       spacing: 8,
@@ -674,46 +748,50 @@ class _CatalogoHomeState extends State<CatalogoHome> {
                     ),
                     const SizedBox(height: 16),
 
-                    if (piedraSet.isNotEmpty) ...[
-                      const Text('Tamaño de la piedra o balín (mm)', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                      const SizedBox(height: 6),
-                      TextField(
-                        controller: tamanoPiedraCtrl,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          hintText: 'Ej. 6 mm',
-                          hintStyle: TextStyle(color: Colors.grey.shade600),
-                          filled: true,
-                          fillColor: Colors.black,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
+                    seccionTitulo('Balinería'),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: kBalineria.map((b) {
+                        final activo = balineriaSet.contains(b);
+                        return FilterChip(
+                          label: Text(b),
+                          selected: activo,
+                          selectedColor: kGold,
+                          backgroundColor: Colors.grey.shade800,
+                          labelStyle: TextStyle(color: activo ? Colors.black : Colors.white, fontSize: 12),
+                          onSelected: (sel) => setModalState(() {
+                            if (sel) {
+                              balineriaSet.add(b);
+                            } else {
+                              balineriaSet.remove(b);
+                            }
+                          }),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 16),
 
-                    if (opcionesTamano.isNotEmpty) ...[
-                      Text('Tamaño total (${p.categoria})', style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                      const SizedBox(height: 6),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: opcionesTamano.map((t) {
-                          final activo = tamanoTotal == t;
-                          return ChoiceChip(
-                            label: Text(t),
-                            selected: activo,
-                            selectedColor: kGold,
-                            backgroundColor: Colors.grey.shade800,
-                            labelStyle: TextStyle(color: activo ? Colors.black : Colors.white),
-                            onSelected: (_) => setModalState(() => tamanoTotal = t),
-                          );
-                        }).toList(),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
+                    seccionTitulo('Tamaño #'),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: kTamanosNumero.map((t) {
+                        final activo = tamanoNumero == t;
+                        return ChoiceChip(
+                          label: Text(t),
+                          selected: activo,
+                          selectedColor: kGold,
+                          backgroundColor: Colors.grey.shade800,
+                          labelStyle: TextStyle(color: activo ? Colors.black : Colors.white),
+                          onSelected: (_) => setModalState(
+                              () => tamanoNumero = activo ? '' : t),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 20),
 
                     SizedBox(
                       width: double.infinity,
@@ -721,9 +799,12 @@ class _CatalogoHomeState extends State<CatalogoHome> {
                         onPressed: () {
                           _actualizarCampo(p, {
                             'material': materialSet.join(','),
+                            'gramos': gramosCtrl.text.trim(),
+                            'tallaCadenaPulsera': tallaCadenaPulseraCtrl.text.trim(),
+                            'tallaAnillo': tallaAnilloCtrl.text.trim(),
                             'piedra': piedraSet.join(','),
-                            'tamanoPiedra': piedraSet.isEmpty ? '' : tamanoPiedraCtrl.text.trim(),
-                            'tamanoTotal': tamanoTotal,
+                            'balineria': balineriaSet.join(','),
+                            'tamanoNumero': tamanoNumero,
                           });
                           Navigator.pop(context);
                         },
@@ -746,14 +827,23 @@ class _CatalogoHomeState extends State<CatalogoHome> {
     );
   }
 
+  InputDecoration _decoracionCampo(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(color: Colors.grey.shade600),
+      filled: true,
+      fillColor: Colors.black,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide.none,
+      ),
+    );
+  }
+
   void _verGrande(Pieza p) {
     final venta = _formatoCOP(p.valorVenta);
-    final caracteristicas = <String>[
-      if (p.material.isNotEmpty) formatoLista(p.material),
-      if (p.piedra.isNotEmpty) formatoLista(p.piedra),
-      if (p.tamanoPiedra.isNotEmpty) '${p.tamanoPiedra}',
-      if (p.tamanoTotal.isNotEmpty) 'Tamaño: ${p.tamanoTotal}',
-    ];
+    final caracteristicas = p.caracteristicasLista();
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -1291,30 +1381,39 @@ class _CatalogoHomeState extends State<CatalogoHome> {
               child: Column(
                 children: [
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Costo',
-                                style: TextStyle(fontSize: 9, color: Colors.grey)),
-                            Text(
-                              p.costoProveedor.isEmpty ? '—' : _formatoCOP(p.costoProveedor),
-                              style: const TextStyle(color: Colors.white, fontSize: 12),
+                            Row(
+                              children: [
+                                const Text('Costo: ',
+                                    style: TextStyle(fontSize: 10, color: Colors.grey)),
+                                Expanded(
+                                  child: Text(
+                                    p.costoProveedor.isEmpty ? '—' : _formatoCOP(p.costoProveedor),
+                                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Venta',
-                                style: TextStyle(fontSize: 9, color: kGold)),
-                            Text(
-                              p.valorVenta.isEmpty ? '—' : _formatoCOP(p.valorVenta),
-                              style: const TextStyle(
-                                  color: kGold, fontSize: 12, fontWeight: FontWeight.bold),
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                const Text('Venta: ',
+                                    style: TextStyle(fontSize: 10, color: kGold)),
+                                Expanded(
+                                  child: Text(
+                                    p.valorVenta.isEmpty ? '—' : _formatoCOP(p.valorVenta),
+                                    style: const TextStyle(
+                                        color: kGold, fontSize: 12, fontWeight: FontWeight.bold),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
