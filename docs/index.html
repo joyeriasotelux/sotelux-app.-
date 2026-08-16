@@ -82,6 +82,15 @@
     border: 1px solid rgba(212,175,55,0.5);
     border-radius: 10px;
   }
+  .mat-badge {
+    display: inline-block;
+    margin: 8px 0 0 4px;
+    padding: 3px 8px;
+    font-size: 10px;
+    color: #ddd;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 10px;
+  }
   .price {
     text-align: center;
     color: #d4af37;
@@ -275,6 +284,11 @@ function preguntarLink(p) {
   return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(texto)}`;
 }
 
+function formatoLista(valor) {
+  if (!valor) return "";
+  return valor.split(",").filter(Boolean).join(" y ");
+}
+
 function render() {
   const gridEl = document.getElementById("grid");
   const visibles = filtro === "Todos" ? piezas : piezas.filter(p => p.categoria === filtro);
@@ -290,6 +304,7 @@ function render() {
       <div class="card" onclick="abrirLightbox('${p.id}')">
         <img src="${p.imageUrl}" loading="lazy" alt="${p.categoria}">
         <span class="cat-badge">${p.categoria}</span>
+        ${p.material ? `<span class="mat-badge">${formatoLista(p.material)}</span>` : ""}
         <div class="price">${precio || "Consultar precio"}</div>
         ${p.stock
           ? `<a class="ask-btn" href="${preguntarLink(p)}" target="_blank" onclick="event.stopPropagation()">Preguntar</a>`
@@ -304,7 +319,7 @@ function abrirLightbox(id) {
   const p = piezas.find(x => x.id === id);
   if (!p) return;
   const precio = formatoCOP(p.valorVenta);
-  const caract = [p.material, p.piedra, p.tamanoPiedra, p.tamanoTotal ? `Tamaño: ${p.tamanoTotal}` : ""]
+  const caract = [formatoLista(p.material), formatoLista(p.piedra), p.tamanoPiedra, p.tamanoTotal ? `Tamaño: ${p.tamanoTotal}` : ""]
     .filter(Boolean).join(" · ");
   document.getElementById("lightboxContent").innerHTML = `
     <img src="${p.imageUrl}" alt="${p.categoria}">
