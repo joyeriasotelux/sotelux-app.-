@@ -284,9 +284,63 @@
     font-size: 12px;
     font-family: inherit;
   }
+  .splash {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    animation: splashOut 1s ease 2.4s forwards;
+  }
+  .splash-logo {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid rgba(212,175,55,0.5);
+    opacity: 0;
+    transform: scale(0.7);
+    animation: splashIn 0.9s ease forwards;
+  }
+  .splash-msg {
+    margin: 22px 0 4px;
+    color: #D4AF37;
+    font-size: 19px;
+    font-weight: 600;
+    text-align: center;
+    padding: 0 30px;
+    opacity: 0;
+    animation: fadeInUp 0.8s ease 0.5s forwards;
+  }
+  .splash-sub {
+    color: #999;
+    font-size: 13px;
+    margin: 0;
+    opacity: 0;
+    animation: fadeInUp 0.8s ease 0.8s forwards;
+  }
+  @keyframes splashIn {
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes splashOut {
+    to { opacity: 0; visibility: hidden; pointer-events: none; }
+  }
 </style>
 </head>
 <body>
+
+<div class="splash" id="splash">
+  <img id="splashLogo" alt="Sotelux Joyería" class="splash-logo">
+  <p class="splash-msg">Eres nuestra joya más preciada</p>
+  <p class="splash-sub">Te damos la bienvenida</p>
+</div>
 
 <header>
   <div class="logo-row">
@@ -563,6 +617,8 @@ function compartirCatalogo() {
     });
   }
 }
+
+document.getElementById("splashLogo").src = document.querySelector(".logo-img").src;
 
 cargarCatalogo();
 </script>
