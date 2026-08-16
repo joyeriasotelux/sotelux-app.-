@@ -757,6 +757,17 @@ class _CatalogoHomeState extends State<CatalogoHome> {
           .toList();
     }
 
+    visibles = [...visibles]
+      ..sort((a, b) {
+        final ia = kCategories.indexOf(a.categoria);
+        final ib = kCategories.indexOf(b.categoria);
+        final catCompare = (ia == -1 ? 999 : ia).compareTo(ib == -1 ? 999 : ib);
+        if (catCompare != 0) return catCompare;
+        final pa = num.tryParse(a.valorVenta) ?? double.infinity;
+        final pb = num.tryParse(b.valorVenta) ?? double.infinity;
+        return pa.compareTo(pb);
+      });
+
     final piezaEncontrada = (vistaInterna &&
             busquedaCodigo.trim().isNotEmpty &&
             visibles.length == 1)
