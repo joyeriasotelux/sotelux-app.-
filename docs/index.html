@@ -124,6 +124,62 @@
     font-size: 12px;
   }
   footer a { color: #d4af37; }
+
+  .lightbox {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.92);
+    z-index: 100;
+    overflow-y: auto;
+  }
+  .lightbox.open { display: block; }
+  .lightbox-close {
+    position: fixed;
+    top: 14px;
+    right: 16px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    border: none;
+    font-size: 20px;
+    z-index: 101;
+  }
+  .lightbox-content {
+    max-width: 500px;
+    margin: 60px auto 40px;
+    padding: 0 16px;
+  }
+  .lightbox-content img {
+    width: 100%;
+    border-radius: 12px;
+    background: #222;
+  }
+  .lightbox-cat {
+    color: #d4af37;
+    font-size: 13px;
+    margin-top: 16px;
+    letter-spacing: 0.5px;
+  }
+  .lightbox-price {
+    font-size: 26px;
+    font-weight: bold;
+    color: #fff;
+    margin: 4px 0 16px;
+  }
+  .lightbox-stock {
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+  .lightbox-stock.si { color: #3ddc84; }
+  .lightbox-stock.no { color: #888; }
+  .lightbox .ask-btn {
+    margin: 0;
+    padding: 14px;
+    font-size: 14px;
+  }
 </style>
 </head>
 <body>
@@ -137,6 +193,11 @@
 
 <div class="tabs" id="tabs"></div>
 <div class="grid" id="grid"><p class="empty">Cargando catálogo…</p></div>
+
+<div class="lightbox" id="lightbox">
+  <button class="lightbox-close" onclick="cerrarLightbox()">✕</button>
+  <div class="lightbox-content" id="lightboxContent"></div>
+</div>
 
 <footer>
   Sotelux Joyería · <a href="https://wa.me/573183676909">WhatsApp</a>
@@ -217,17 +278,38 @@ function render() {
   gridEl.innerHTML = visibles.map(p => {
     const precio = formatoCOP(p.valorVenta);
     return `
-      <div class="card">
+      <div class="card" onclick="abrirLightbox('${p.id}')">
         <img src="${p.imageUrl}" loading="lazy" alt="${p.categoria}">
         <span class="cat-badge">${p.categoria}</span>
         <div class="price">${precio || "Consultar precio"}</div>
         ${p.stock
-          ? `<a class="ask-btn" href="${preguntarLink(p)}" target="_blank">Preguntar</a>`
+          ? `<a class="ask-btn" href="${preguntarLink(p)}" target="_blank" onclick="event.stopPropagation()">Preguntar</a>`
           : `<div class="stock-out">Sin inventario</div>`
         }
       </div>
     `;
   }).join("");
+}
+
+function abrirLightbox(id) {
+  const p = piezas.find(x => x.id === id);
+  if (!p) return;
+  const precio = formatoCOP(p.valorVenta);
+  document.getElementById("lightboxContent").innerHTML = `
+    <img src="${p.imageUrl}" alt="${p.categoria}">
+    <div class="lightbox-cat">${p.categoria.toUpperCase()}</div>
+    <div class="lightbox-price">${precio || "Consultar precio"}</div>
+    <div class="lightbox-stock ${p.stock ? 'si' : 'no'}">${p.stock ? '● Disponible' : '● Sin inventario'}</div>
+    ${p.stock
+      ? `<a class="ask-btn" href="${preguntarLink(p)}" target="_blank">Preguntar por esta pieza</a>`
+      : ''
+    }
+  `;
+  document.getElementById("lightbox").classList.add("open");
+}
+
+function cerrarLightbox() {
+  document.getElementById("lightbox").classList.remove("open");
 }
 
 cargarCatalogo();
