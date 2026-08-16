@@ -42,16 +42,16 @@ jobs:
         run: |
           cat >> android/build.gradle << 'EOF'
 
-subprojects {
-    afterEvaluate { proj ->
-        if (proj.hasProperty('android')) {
-            proj.android {
-                compileSdk 35
-            }
-        }
-    }
-}
-EOF
+          subprojects {
+              afterEvaluate { proj ->
+                  if (proj.hasProperty('android')) {
+                      proj.android {
+                          compileSdk 35
+                      }
+                  }
+              }
+          }
+          EOF
 
       - name: Instalar dependencias
         run: flutter pub get
