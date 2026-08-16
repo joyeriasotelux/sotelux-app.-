@@ -343,6 +343,12 @@ async function cargarCatalogo() {
   renderTabs();
   renderFiltroMaterial();
   render();
+
+  const params = new URLSearchParams(window.location.search);
+  const piezaId = params.get("pieza");
+  if (piezaId && piezas.some(p => p.id === piezaId)) {
+    abrirLightbox(piezaId);
+  }
 }
 
 function renderTabs() {
@@ -433,10 +439,11 @@ async function compartirPieza(e, id) {
   const p = piezas.find(x => x.id === id);
   if (!p) return;
 
+  const enlace = `${window.location.origin}${window.location.pathname}?pieza=${p.id}`;
   const precio = formatoCOP(p.valorVenta) || "Consultar precio";
   const caract = [formatoLista(p.material), formatoLista(p.piedra), p.tamanoPiedra, p.tamanoTotal ? `Tamaño: ${p.tamanoTotal}` : ""]
     .filter(Boolean).join(" · ");
-  const texto = `✨ Sotelux Joyería ✨\n${p.categoria}\nPrecio: ${precio}${caract ? "\n" + caract : ""}\n\n${window.location.href}`;
+  const texto = `✨ Sotelux Joyería ✨\n${p.categoria}\nPrecio: ${precio}${caract ? "\n" + caract : ""}\n\n${enlace}`;
 
   try {
     const resp = await fetch(p.imageUrl);
