@@ -1190,7 +1190,7 @@ class _CatalogoHomeState extends State<CatalogoHome> {
   }
 
   Widget _buildFiltroMaterial() {
-    final opciones = ['Todos', 'Oro', 'Plata', 'Oro y Plata'];
+    final opciones = ['Todos', 'Oro 18k ', 'Plata ley 925', 'mixta'];
     return SizedBox(
       height: 46,
       child: ListView.separated(
