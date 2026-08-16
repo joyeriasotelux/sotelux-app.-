@@ -293,7 +293,14 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    animation: splashOut 1s ease 2.4s forwards;
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.9s ease, visibility 0.9s ease;
+  }
+  .splash.hide {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
   }
   .splash-logo {
     width: 90px;
@@ -303,7 +310,7 @@
     border: 1px solid rgba(212,175,55,0.5);
     opacity: 0;
     transform: scale(0.7);
-    animation: splashIn 0.9s ease forwards;
+    animation: splashIn 1.8s ease forwards;
   }
   .splash-msg {
     margin: 22px 0 4px;
@@ -313,14 +320,26 @@
     text-align: center;
     padding: 0 30px;
     opacity: 0;
-    animation: fadeInUp 0.8s ease 0.5s forwards;
+    animation: fadeInUp 1.4s ease 1s forwards;
   }
   .splash-sub {
     color: #999;
     font-size: 13px;
-    margin: 0;
+    margin: 0 0 30px;
     opacity: 0;
-    animation: fadeInUp 0.8s ease 0.8s forwards;
+    animation: fadeInUp 1.4s ease 1.7s forwards;
+  }
+  .splash-btn {
+    padding: 12px 32px;
+    background: transparent;
+    border: 1px solid #D4AF37;
+    border-radius: 24px;
+    color: #D4AF37;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    font-family: inherit;
+    opacity: 0;
+    animation: fadeInUp 1.4s ease 2.4s forwards;
   }
   @keyframes splashIn {
     to { opacity: 1; transform: scale(1); }
@@ -328,9 +347,6 @@
   @keyframes fadeInUp {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes splashOut {
-    to { opacity: 0; visibility: hidden; pointer-events: none; }
   }
 </style>
 </head>
@@ -340,6 +356,7 @@
   <img id="splashLogo" alt="Sotelux Joyería" class="splash-logo">
   <p class="splash-msg">Eres nuestra joya más preciada</p>
   <p class="splash-sub">Te damos la bienvenida</p>
+  <button class="splash-btn" onclick="entrarCatalogo()">Ingresar al catálogo</button>
 </div>
 
 <header>
@@ -616,6 +633,10 @@ function compartirCatalogo() {
       alert("Enlace copiado. Pégalo donde quieras enviarlo.");
     });
   }
+}
+
+function entrarCatalogo() {
+  document.getElementById("splash").classList.add("hide");
 }
 
 document.getElementById("splashLogo").src = document.querySelector(".logo-img").src;
