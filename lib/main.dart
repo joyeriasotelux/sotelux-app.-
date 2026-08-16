@@ -20,6 +20,7 @@ const List<String> kCategories = [
   'Cadenas',
   'Aretes y Topos',
   'Pulseras',
+  'Conjuntos',
 ];
 
 Future<void> main() async {
@@ -94,6 +95,12 @@ List<String> tamanosPara(String categoria) {
     default:
       return [];
   }
+}
+
+String formatoLista(String valor) {
+  final partes = valor.split(',').where((s) => s.trim().isNotEmpty).toList();
+  if (partes.isEmpty) return '';
+  return partes.join(' y ');
 }
 
 String clasificarPieza(String nombreArchivo) {
@@ -395,8 +402,8 @@ class _CatalogoHomeState extends State<CatalogoHome> {
 
   void _editarCaracteristicas(Pieza p) {
     final tamanoPiedraCtrl = TextEditingController(text: p.tamanoPiedra);
-    String material = p.material;
-    String piedra = p.piedra.isEmpty ? 'Ninguna' : p.piedra;
+    final materialSet = p.material.split(',').where((s) => s.trim().isNotEmpty).map((s) => s.trim()).toSet();
+    final piedraSet = p.piedra.split(',').where((s) => s.trim().isNotEmpty).map((s) => s.trim()).toSet();
     String tamanoTotal = p.tamanoTotal;
     final opcionesTamano = tamanosPara(p.categoria);
 
@@ -422,44 +429,56 @@ class _CatalogoHomeState extends State<CatalogoHome> {
                         style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                     const SizedBox(height: 16),
 
-                    const Text('Material', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                    const Text('Material (puedes elegir varios)', style: TextStyle(color: Colors.grey, fontSize: 12)),
                     const SizedBox(height: 6),
                     Wrap(
                       spacing: 8,
                       children: kMateriales.map((m) {
-                        final activo = material == m;
-                        return ChoiceChip(
+                        final activo = materialSet.contains(m);
+                        return FilterChip(
                           label: Text(m),
                           selected: activo,
                           selectedColor: kGold,
                           backgroundColor: Colors.grey.shade800,
                           labelStyle: TextStyle(color: activo ? Colors.black : Colors.white),
-                          onSelected: (_) => setModalState(() => material = m),
+                          onSelected: (sel) => setModalState(() {
+                            if (sel) {
+                              materialSet.add(m);
+                            } else {
+                              materialSet.remove(m);
+                            }
+                          }),
                         );
                       }).toList(),
                     ),
                     const SizedBox(height: 16),
 
-                    const Text('Piedra / material de la piedra', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                    const Text('Piedra / material de la piedra (puedes elegir varios)', style: TextStyle(color: Colors.grey, fontSize: 12)),
                     const SizedBox(height: 6),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
                       children: kPiedras.map((pi) {
-                        final activo = piedra == pi;
-                        return ChoiceChip(
+                        final activo = piedraSet.contains(pi);
+                        return FilterChip(
                           label: Text(pi),
                           selected: activo,
                           selectedColor: kGold,
                           backgroundColor: Colors.grey.shade800,
                           labelStyle: TextStyle(color: activo ? Colors.black : Colors.white, fontSize: 12),
-                          onSelected: (_) => setModalState(() => piedra = pi),
+                          onSelected: (sel) => setModalState(() {
+                            if (sel) {
+                              piedraSet.add(pi);
+                            } else {
+                              piedraSet.remove(pi);
+                            }
+                          }),
                         );
                       }).toList(),
                     ),
                     const SizedBox(height: 16),
 
-                    if (piedra != 'Ninguna') ...[
+                    if (piedraSet.isNotEmpty) ...[
                       const Text('Tamaño de la piedra o balín (mm)', style: TextStyle(color: Colors.grey, fontSize: 12)),
                       const SizedBox(height: 6),
                       TextField(
@@ -505,9 +524,9 @@ class _CatalogoHomeState extends State<CatalogoHome> {
                       child: ElevatedButton(
                         onPressed: () {
                           _actualizarCampo(p, {
-                            'material': material,
-                            'piedra': piedra == 'Ninguna' ? '' : piedra,
-                            'tamanoPiedra': piedra == 'Ninguna' ? '' : tamanoPiedraCtrl.text.trim(),
+                            'material': materialSet.join(','),
+                            'piedra': piedraSet.join(','),
+                            'tamanoPiedra': piedraSet.isEmpty ? '' : tamanoPiedraCtrl.text.trim(),
                             'tamanoTotal': tamanoTotal,
                           });
                           Navigator.pop(context);
@@ -534,8 +553,8 @@ class _CatalogoHomeState extends State<CatalogoHome> {
   void _verGrande(Pieza p) {
     final venta = _formatoCOP(p.valorVenta);
     final caracteristicas = <String>[
-      if (p.material.isNotEmpty) p.material,
-      if (p.piedra.isNotEmpty) p.piedra,
+      if (p.material.isNotEmpty) formatoLista(p.material),
+      if (p.piedra.isNotEmpty) formatoLista(p.piedra),
       if (p.tamanoPiedra.isNotEmpty) '${p.tamanoPiedra}',
       if (p.tamanoTotal.isNotEmpty) 'Tamaño: ${p.tamanoTotal}',
     ];
@@ -865,6 +884,12 @@ class _CatalogoHomeState extends State<CatalogoHome> {
                     ),
                   ),
                 ),
+                if (!vistaInterna && p.material.isNotEmpty)
+                  Positioned(
+                    right: 6,
+                    top: 6,
+                    child: _badge(formatoLista(p.material), Colors.white70),
+                  ),
                 if (vistaInterna)
                   Positioned(
                     left: 6,
