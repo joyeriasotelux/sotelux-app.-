@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Catálogo Sotelux Joyería</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #000;
+    color: #fff;
+    font-family: -apple-system, Roboto, Arial, sans-serif;
+  }
+  header {
+    padding: 24px 16px 12px;
+  }
+  .logo-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 4px;
+  }
+  .logo-row h1 {
+    font-size: 26px;
+    margin: 0;
+  }
+  .subtitle {
+    color: #999;
+    font-size: 13px;
+    margin: 0 0 16px;
+  }
+  .tabs {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 0 16px 12px;
+  }
+  .tab {
+    flex-shrink: 0;
+    padding: 8px 14px;
+    border: 1px solid #444;
+    border-radius: 20px;
+    font-size: 13px;
+    color: #aaa;
+    cursor: pointer;
+    background: transparent;
+  }
+  .tab.active {
+    background: #fff;
+    color: #000;
+    border-color: #fff;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    padding: 0 16px 32px;
+  }
+  @media (min-width: 700px) {
+    .grid { grid-template-columns: repeat(4, 1fr); }
+  }
+  .card {
+    background: #141414;
+    border: 1px solid #2a2a2a;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .card img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    display: block;
+    background: #222;
+  }
+  .cat-badge {
+    display: inline-block;
+    margin: 8px 8px 0;
+    padding: 3px 8px;
+    font-size: 10px;
+    color: #d4af37;
+    border: 1px solid rgba(212,175,55,0.5);
+    border-radius: 10px;
+  }
+  .price {
+    text-align: center;
+    color: #d4af37;
+    font-weight: bold;
+    font-size: 14px;
+    padding: 8px 6px 2px;
+  }
+  .stock-out {
+    text-align: center;
+    color: #888;
+    font-size: 11px;
+    padding: 2px 6px 8px;
+  }
+  .ask-btn {
+    display: block;
+    margin: 8px;
+    padding: 8px;
+    text-align: center;
+    border: 1px solid #3ddc84;
+    border-radius: 8px;
+    color: #3ddc84;
+    font-size: 12px;
+    text-decoration: none;
+  }
+  .ask-btn.disabled {
+    border-color: #444;
+    color: #666;
+    pointer-events: none;
+  }
+  .empty {
+    text-align: center;
+    color: #777;
+    padding: 60px 20px;
+    font-size: 14px;
+  }
+  footer {
+    text-align: center;
+    padding: 20px;
+    color: #666;
+    font-size: 12px;
+  }
+  footer a { color: #d4af37; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-row">
+    <h1>Catálogo Sotelux</h1>
+  </div>
+  <p class="subtitle">Toca "Preguntar" en la pieza que te interesa</p>
+</header>
+
+<div class="tabs" id="tabs"></div>
+<div class="grid" id="grid"><p class="empty">Cargando catálogo…</p></div>
+
+<footer>
+  Sotelux Joyería · <a href="https://wa.me/573183676909">WhatsApp</a>
+</footer>
+
+<script>
+const PROJECT_ID = "sotelux-app";
+const WHATSAPP_NUMBER = "573183676909";
+const CATEGORIES = ["Anillos", "Cadenas", "Aretes y Topos", "Pulseras"];
+
+let piezas = [];
+let filtro = "Todos";
+
+function formatoCOP(valor) {
+  const n = Number(valor);
+  if (!valor || isNaN(n)) return "";
+  return "$" + n.toLocaleString("es-CO");
+}
+
+function parseDoc(doc) {
+  const f = doc.fields || {};
+  const id = doc.name.split("/").pop();
+  return {
+    id: id,
+    imageUrl: f.imageUrl ? f.imageUrl.stringValue : "",
+    categoria: f.categoria ? f.categoria.stringValue : "Anillos",
+    valorVenta: f.valorVenta ? f.valorVenta.stringValue : "",
+    stock: f.stock ? f.stock.booleanValue !== false : true,
+  };
+}
+
+async function cargarCatalogo() {
+  try {
+    const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/piezas`;
+    const res = await fetch(url);
+    const data = await res.json();
+    piezas = (data.documents || []).map(parseDoc);
+  } catch (e) {
+    document.getElementById("grid").innerHTML = '<p class="empty">No se pudo cargar el catálogo. Intenta de nuevo.</p>';
+    return;
+  }
+  renderTabs();
+  render();
+}
+
+function renderTabs() {
+  const tabsEl = document.getElementById("tabs");
+  const opciones = ["Todos", ...CATEGORIES];
+  tabsEl.innerHTML = opciones.map(cat => {
+    const count = cat === "Todos" ? piezas.length : piezas.filter(p => p.categoria === cat).length;
+    return `<button class="tab ${cat === filtro ? 'active' : ''}" data-cat="${cat}">${cat} (${count})</button>`;
+  }).join("");
+  tabsEl.querySelectorAll(".tab").forEach(btn => {
+    btn.addEventListener("click", () => {
+      filtro = btn.dataset.cat;
+      renderTabs();
+      render();
+    });
+  });
+}
+
+function preguntarLink(p) {
+  const precio = formatoCOP(p.valorVenta);
+  const codigo = p.id.substring(0, 6);
+  const texto = `Hola, me interesa esta pieza:\n${p.categoria} — código ${codigo}\nPrecio: ${precio || "consultar"}\n¿Está disponible?`;
+  return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(texto)}`;
+}
+
+function render() {
+  const gridEl = document.getElementById("grid");
+  const visibles = filtro === "Todos" ? piezas : piezas.filter(p => p.categoria === filtro);
+
+  if (visibles.length === 0) {
+    gridEl.innerHTML = '<p class="empty">Aún no hay piezas en esta categoría.</p>';
+    return;
+  }
+
+  gridEl.innerHTML = visibles.map(p => {
+    const precio = formatoCOP(p.valorVenta);
+    return `
+      <div class="card">
+        <img src="${p.imageUrl}" loading="lazy" alt="${p.categoria}">
+        <span class="cat-badge">${p.categoria}</span>
+        <div class="price">${precio || "Consultar precio"}</div>
+        ${p.stock
+          ? `<a class="ask-btn" href="${preguntarLink(p)}" target="_blank">Preguntar</a>`
+          : `<div class="stock-out">Sin inventario</div>`
+        }
+      </div>
+    `;
+  }).join("");
+}
+
+cargarCatalogo();
+</script>
+
+</body>
+</html>
