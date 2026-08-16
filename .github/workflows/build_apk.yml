@@ -2,14 +2,12 @@ name: Build APK
 
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch:
+    branches: [ main ]
+  workflow_dispatch: {}
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Descargar código
         uses: actions/checkout@v4
@@ -18,36 +16,47 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.24.0'
-          channel: stable
+          channel: 'stable'
 
-      - name: Generar carpeta Android
-        run: |
-          flutter create \
-            --platforms=android \
-            --project-name sotelux_app \
-            .
+      - name: Generar carpeta Android del proyecto
+        run: flutter create --platforms=android --project-name sotelux_app .
 
-      - name: Configurar Android
+      - name: Actualizar AGP, Kotlin y Gradle a versiones compatibles
         run: |
           sed -i 's/com.android.application" version "[^"]*"/com.android.application" version "8.3.0"/' android/settings.gradle
           sed -i 's/org.jetbrains.kotlin.android" version "[^"]*"/org.jetbrains.kotlin.android" version "1.9.24"/' android/settings.gradle
           sed -i 's#distributionUrl=.*#distributionUrl=https\\://services.gradle.org/distributions/gradle-8.4-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
 
-      - name: Configurar Firebase
+      - name: Activar plugin de Google Services (Firebase)
         run: |
           sed -i '/id "org.jetbrains.kotlin.android" version "1.9.24" apply false/a\    id "com.google.gms.google-services" version "4.4.2" apply false' android/settings.gradle
           sed -i '/id "dev.flutter.flutter-gradle-plugin"/a\    id "com.google.gms.google-services"' android/app/build.gradle
           cp firebase-config/google-services.json android/app/google-services.json
 
-      - name: Configurar compileSdk y NDK
+      - name: Ajustar compileSdk y NDK requeridos por los plugins
         run: |
           sed -i -E 's/^([[:space:]]*)compileSdk(Version)?[[:space:]]*=?[[:space:]]*flutter\.compileSdkVersion.*/\1compileSdk = 35/' android/app/build.gradle
           sed -i -E '/^[[:space:]]*compileSdk = 35/a\    ndkVersion = "25.1.8937393"' android/app/build.gradle
 
+      - name: Forzar compileSdk 35 en todos los sub-proyectos (plugins de Flutter)
+        run: |
+          cat >> android/build.gradle << 'EOF'
+
+subprojects {
+    afterEvaluate { proj ->
+        if (proj.hasProperty('android')) {
+            proj.android {
+                compileSdk 35
+            }
+        }
+    }
+}
+EOF
+
       - name: Instalar dependencias
         run: flutter pub get
 
-      - name: Generar íconos
+      - name: Generar ícono de la app
         run: dart run flutter_launcher_icons
 
       - name: Compilar APK
