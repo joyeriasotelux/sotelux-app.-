@@ -129,11 +129,11 @@ String formatoLista(String valor) {
 
 String categoriaMaterial(String material) {
   final texto = material.toLowerCase();
-  final tieneOro = texto.contains('oro');
-  final tienePlata = texto.contains('plata');
-  if (tieneOro && tienePlata) return 'Oro y Plata';
-  if (tieneOro) return 'Oro';
-  if (tienePlata) return 'Plata';
+  final tieneOro = texto.contains('Oro 18k');
+  final tienePlata = texto.contains('plata ley 925');
+  if (tieneOro && tienePlata) return 'Mixta';
+  if (tieneOro) return 'Oro 18k';
+  if (tienePlata) return 'Plata ley 925';
   return '';
 }
 
