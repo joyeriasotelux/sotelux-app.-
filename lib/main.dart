@@ -507,6 +507,95 @@ class _CatalogoHomeState extends State<CatalogoHome> {
     );
   }
 
+  void _editarPrecios(Pieza p) {
+    final costoCtrl = TextEditingController(text: p.costoProveedor);
+    final ventaCtrl = TextEditingController(text: p.valorVenta);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.grey.shade900,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom, left: 16, right: 16, top: 16),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Editar precios',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 16),
+                const Text('Costo del proveedor', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: costoCtrl,
+                  autofocus: true,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(color: Colors.white, fontSize: 15),
+                  decoration: InputDecoration(
+                    hintText: 'Ej. 350000',
+                    hintStyle: TextStyle(color: Colors.grey.shade600),
+                    filled: true,
+                    fillColor: Colors.black,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text('Valor de venta', style: TextStyle(color: kGold, fontSize: 12)),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: ventaCtrl,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(color: Colors.white, fontSize: 15),
+                  decoration: InputDecoration(
+                    hintText: 'Ej. 600000',
+                    hintStyle: TextStyle(color: Colors.grey.shade600),
+                    filled: true,
+                    fillColor: Colors.black,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: kGold.withOpacity(0.4)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      _actualizarCampo(p, {
+                        'costoProveedor': costoCtrl.text.trim(),
+                        'valorVenta': ventaCtrl.text.trim(),
+                      });
+                      Navigator.pop(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: kGold,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: const Text('Guardar precios'),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _editarCaracteristicas(Pieza p) {
     final tamanoPiedraCtrl = TextEditingController(text: p.tamanoPiedra);
     final materialSet = p.material.split(',').where((s) => s.trim().isNotEmpty).map((s) => s.trim()).toSet();
@@ -776,21 +865,22 @@ class _CatalogoHomeState extends State<CatalogoHome> {
 
     return Scaffold(
       body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            if (vistaInterna) _buildPanelSubida(),
-            if (vistaInterna) _buildBuscadorCodigo(),
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(child: _buildHeader()),
+            if (vistaInterna) SliverToBoxAdapter(child: _buildPanelSubida()),
+            if (vistaInterna) SliverToBoxAdapter(child: _buildBuscadorCodigo()),
             if (piezaEncontrada != null)
-              _buildBotonContactarProveedor(piezaEncontrada),
-            _buildTabsCategorias(),
-            if (!vistaInterna) _buildFiltroMaterial(),
-            Expanded(
-              child: conectando
-                  ? const Center(
-                      child: CircularProgressIndicator(color: kGold))
-                  : _buildGrid(visibles),
-            ),
+              SliverToBoxAdapter(
+                  child: _buildBotonContactarProveedor(piezaEncontrada)),
+            SliverToBoxAdapter(child: _buildTabsCategorias()),
+            if (!vistaInterna) SliverToBoxAdapter(child: _buildFiltroMaterial()),
+            if (conectando)
+              const SliverFillRemaining(
+                child: Center(child: CircularProgressIndicator(color: kGold)),
+              )
+            else
+              _buildGridSliver(visibles),
           ],
         ),
       ),
@@ -1084,29 +1174,35 @@ class _CatalogoHomeState extends State<CatalogoHome> {
     );
   }
 
-  Widget _buildGrid(List<Pieza> visibles) {
+  Widget _buildGridSliver(List<Pieza> visibles) {
     if (visibles.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(32),
-          child: Text(
-            'Aún no hay piezas cargadas. Sube las fotos del proveedor.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey),
+      return const SliverFillRemaining(
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(32),
+            child: Text(
+              'Aún no hay piezas cargadas. Sube las fotos del proveedor.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey),
+            ),
           ),
         ),
       );
     }
-    return GridView.builder(
+    return SliverPadding(
       padding: const EdgeInsets.all(16),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: vistaInterna ? 0.56 : 0.72,
+      sliver: SliverGrid(
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: vistaInterna ? 0.56 : 0.72,
+        ),
+        delegate: SliverChildBuilderDelegate(
+          (context, i) => _buildCard(visibles[i]),
+          childCount: visibles.length,
+        ),
       ),
-      itemCount: visibles.length,
-      itemBuilder: (context, i) => _buildCard(visibles[i]),
     );
   }
 
@@ -1197,13 +1293,38 @@ class _CatalogoHomeState extends State<CatalogoHome> {
                   Row(
                     children: [
                       Expanded(
-                        child: _precioInput('Costo', p.costoProveedor,
-                            (v) => _actualizarCampo(p, {'costoProveedor': v})),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Costo',
+                                style: TextStyle(fontSize: 9, color: Colors.grey)),
+                            Text(
+                              p.costoProveedor.isEmpty ? '—' : _formatoCOP(p.costoProveedor),
+                              style: const TextStyle(color: Colors.white, fontSize: 12),
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(width: 4),
                       Expanded(
-                        child: _precioInput('Venta', p.valorVenta,
-                            (v) => _actualizarCampo(p, {'valorVenta': v})),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Venta',
+                                style: TextStyle(fontSize: 9, color: kGold)),
+                            Text(
+                              p.valorVenta.isEmpty ? '—' : _formatoCOP(p.valorVenta),
+                              style: const TextStyle(
+                                  color: kGold, fontSize: 12, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => _editarPrecios(p),
+                        icon: const Icon(Icons.edit, size: 16, color: kGold),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        tooltip: 'Editar precios',
                       ),
                     ],
                   ),
@@ -1295,27 +1416,6 @@ class _CatalogoHomeState extends State<CatalogoHome> {
     );
   }
 
-  Widget _precioInput(String label, String value, Function(String) onChanged) {
-    return TextField(
-      controller: TextEditingController(text: value)
-        ..selection = TextSelection.collapsed(offset: value.length),
-      keyboardType: TextInputType.number,
-      onChanged: onChanged,
-      style: const TextStyle(color: Colors.white, fontSize: 11),
-      decoration: InputDecoration(
-        isDense: true,
-        labelText: label,
-        labelStyle: const TextStyle(fontSize: 9, color: Colors.grey),
-        filled: true,
-        fillColor: Colors.black,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: BorderSide.none,
-        ),
-      ),
-    );
-  }
 }
 
 class _StockBadge extends StatelessWidget {
