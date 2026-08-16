@@ -99,6 +99,23 @@
     display: block;
     background: #222;
   }
+  .img-wrap {
+    position: relative;
+  }
+  .share-icon-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.6);
+    border: none;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
   .cat-badge {
     display: inline-block;
     margin: 8px 8px 0;
@@ -387,7 +404,18 @@ function render() {
     const precio = formatoCOP(p.valorVenta);
     return `
       <div class="card" onclick="abrirLightbox('${p.id}')">
-        <img src="${p.imageUrl}" loading="lazy" alt="${p.categoria}">
+        <div class="img-wrap">
+          <img src="${p.imageUrl}" loading="lazy" alt="${p.categoria}">
+          <button class="share-icon-btn" onclick="compartirPieza(event, '${p.id}')" aria-label="Compartir pieza">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="18" cy="5" r="3"/>
+              <circle cx="6" cy="12" r="3"/>
+              <circle cx="18" cy="19" r="3"/>
+              <line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/>
+              <line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/>
+            </svg>
+          </button>
+        </div>
         <span class="cat-badge">${p.categoria}</span>
         ${p.material ? `<span class="mat-badge">${formatoLista(p.material)}</span>` : ""}
         <div class="price">${precio || "Consultar precio"}</div>
@@ -398,6 +426,35 @@ function render() {
       </div>
     `;
   }).join("");
+}
+
+async function compartirPieza(e, id) {
+  e.stopPropagation();
+  const p = piezas.find(x => x.id === id);
+  if (!p) return;
+
+  const precio = formatoCOP(p.valorVenta) || "Consultar precio";
+  const caract = [formatoLista(p.material), formatoLista(p.piedra), p.tamanoPiedra, p.tamanoTotal ? `Tamaño: ${p.tamanoTotal}` : ""]
+    .filter(Boolean).join(" · ");
+  const texto = `✨ Sotelux Joyería ✨\n${p.categoria}\nPrecio: ${precio}${caract ? "\n" + caract : ""}\n\n${window.location.href}`;
+
+  try {
+    const resp = await fetch(p.imageUrl);
+    const blob = await resp.blob();
+    const file = new File([blob], "pieza-sotelux.jpg", { type: blob.type || "image/jpeg" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: "Sotelux Joyería", text: texto });
+      return;
+    }
+  } catch (err) {}
+
+  if (navigator.share) {
+    navigator.share({ title: "Sotelux Joyería", text: texto }).catch(() => {});
+  } else {
+    navigator.clipboard.writeText(texto).then(() => {
+      alert("Información de la pieza copiada. Pégala donde quieras enviarla.");
+    });
+  }
 }
 
 function abrirLightbox(id) {
