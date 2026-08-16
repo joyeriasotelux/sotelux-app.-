@@ -169,6 +169,11 @@
     color: #fff;
     margin: 4px 0 16px;
   }
+  .lightbox-caract {
+    color: #ccc;
+    font-size: 12px;
+    margin: -10px 0 16px;
+  }
   .lightbox-stock {
     font-size: 13px;
     margin-bottom: 16px;
@@ -226,6 +231,10 @@ function parseDoc(doc) {
     categoria: f.categoria ? f.categoria.stringValue : "Anillos",
     valorVenta: f.valorVenta ? f.valorVenta.stringValue : "",
     stock: f.stock ? f.stock.booleanValue !== false : true,
+    material: f.material ? f.material.stringValue : "",
+    piedra: f.piedra ? f.piedra.stringValue : "",
+    tamanoPiedra: f.tamanoPiedra ? f.tamanoPiedra.stringValue : "",
+    tamanoTotal: f.tamanoTotal ? f.tamanoTotal.stringValue : "",
   };
 }
 
@@ -295,10 +304,13 @@ function abrirLightbox(id) {
   const p = piezas.find(x => x.id === id);
   if (!p) return;
   const precio = formatoCOP(p.valorVenta);
+  const caract = [p.material, p.piedra, p.tamanoPiedra, p.tamanoTotal ? `Tamaño: ${p.tamanoTotal}` : ""]
+    .filter(Boolean).join(" · ");
   document.getElementById("lightboxContent").innerHTML = `
     <img src="${p.imageUrl}" alt="${p.categoria}">
     <div class="lightbox-cat">${p.categoria.toUpperCase()}</div>
     <div class="lightbox-price">${precio || "Consultar precio"}</div>
+    ${caract ? `<div class="lightbox-caract">${caract}</div>` : ""}
     <div class="lightbox-stock ${p.stock ? 'si' : 'no'}">${p.stock ? '● Disponible' : '● Sin inventario'}</div>
     ${p.stock
       ? `<a class="ask-btn" href="${preguntarLink(p)}" target="_blank">Preguntar por esta pieza</a>`
