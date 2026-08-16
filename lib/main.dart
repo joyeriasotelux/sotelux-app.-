@@ -378,3 +378,391 @@ class _CatalogoHomeState extends State<CatalogoHome> {
       ),
     );
   }
+
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              ClipOval(
+                child: Image.asset('assets/icon/icon.png',
+                    width: 40, height: 40, fit: BoxFit.cover),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'Catálogo Sotelux',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              _toggleButton('Vista interna', vistaInterna, () {
+                setState(() => vistaInterna = true);
+              }),
+              const SizedBox(width: 8),
+              _toggleButton('Vista cliente', !vistaInterna, () {
+                setState(() => vistaInterna = false);
+              }),
+              const Spacer(),
+              if (!vistaInterna)
+                IconButton(
+                  onPressed: _compartirCatalogoPdf,
+                  icon: const Icon(Icons.picture_as_pdf, color: kGold),
+                  tooltip: 'Compartir PDF',
+                ),
+              if (!vistaInterna)
+                IconButton(
+                  onPressed: _abrirWhatsApp,
+                  icon: const Icon(Icons.chat, color: Colors.greenAccent),
+                  tooltip: 'Abrir en WhatsApp',
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _toggleButton(String label, bool active, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: active ? kGold : Colors.grey.shade900,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: active ? Colors.black : Colors.grey.shade400,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPanelSubida() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Proveedor de este lote',
+              style: TextStyle(color: Colors.grey, fontSize: 12)),
+          const SizedBox(height: 4),
+          TextField(
+            controller: _proveedorCtrl,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: 'Ej. Proveedor Palmira',
+              hintStyle: TextStyle(color: Colors.grey.shade600),
+              filled: true,
+              fillColor: Colors.grey.shade900,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: subiendo ? null : _subirFotos,
+              icon: subiendo
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.upload),
+              label: Text(subiendo ? 'Subiendo...' : 'Seleccionar fotos'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kGold,
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabsCategorias() {
+    final opciones = ['Todos', ...kCategories];
+    return SizedBox(
+      height: 40,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: opciones.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, i) {
+          final cat = opciones[i];
+          final activo = filtroCategoria == cat;
+          final count = cat == 'Todos'
+              ? piezas.length
+              : piezas.where((p) => p.categoria == cat).length;
+          return GestureDetector(
+            onTap: () => setState(() => filtroCategoria = cat),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: activo ? Colors.white : Colors.transparent,
+                border: Border.all(color: Colors.grey.shade700),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '$cat ($count)',
+                style: TextStyle(
+                  color: activo ? Colors.black : Colors.grey.shade400,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildGrid(List<Pieza> visibles) {
+    if (visibles.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: Text(
+            'Aún no hay piezas cargadas. Sube las fotos del proveedor.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey),
+          ),
+        ),
+      );
+    }
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 0.72,
+      ),
+      itemCount: visibles.length,
+      itemBuilder: (context, i) => _buildCard(visibles[i]),
+    );
+  }
+
+  Widget _buildCard(Pieza p) {
+    final venta = _formatoCOP(p.valorVenta);
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey.shade900,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade800),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AspectRatio(
+            aspectRatio: 1,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.network(
+                  p.imageUrl,
+                  fit: BoxFit.cover,
+                  loadingBuilder: (context, child, progress) {
+                    if (progress == null) return child;
+                    return const Center(
+                        child: CircularProgressIndicator(
+                            color: kGold, strokeWidth: 2));
+                  },
+                  errorBuilder: (context, error, stack) =>
+                      const Icon(Icons.broken_image, color: Colors.grey),
+                ),
+                Positioned(
+                  left: 6,
+                  bottom: 6,
+                  child: GestureDetector(
+                    onTap: vistaInterna ? () => _elegirCategoria(p) : null,
+                    child: _badge(
+                      vistaInterna ? '${p.categoria} ✏️' : p.categoria,
+                      kGold,
+                    ),
+                  ),
+                ),
+                if (vistaInterna)
+                  Positioned(
+                    left: 6,
+                    top: 6,
+                    child: _badge(
+                        '${p.proveedor} · ${p.id.substring(0, 6)}',
+                        Colors.grey.shade400),
+                  ),
+                if (!p.stock)
+                  const Positioned(
+                    right: 6,
+                    bottom: 6,
+                    child: _StockBadge(),
+                  ),
+                if (vistaInterna)
+                  GestureDetector(
+                    onTap: () => _eliminar(p),
+                    child: Container(
+                      alignment: Alignment.topRight,
+                      padding: const EdgeInsets.all(4),
+                      child: const CircleAvatar(
+                        radius: 12,
+                        backgroundColor: Colors.black54,
+                        child: Icon(Icons.close, size: 14, color: Colors.white),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          if (vistaInterna)
+            Padding(
+              padding: const EdgeInsets.all(6),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _precioInput('Costo', p.costoProveedor,
+                            (v) => _actualizarCampo(p, {'costoProveedor': v})),
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: _precioInput('Venta', p.valorVenta,
+                            (v) => _actualizarCampo(p, {'valorVenta': v})),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('En stock',
+                          style: TextStyle(color: Colors.grey, fontSize: 11)),
+                      Switch(
+                        value: p.stock,
+                        activeColor: kGold,
+                        onChanged: (v) =>
+                            _actualizarCampo(p, {'stock': v}),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+              child: Column(
+                children: [
+                  Text(
+                    venta.isEmpty ? 'Consultar precio' : venta,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: kGold,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: p.stock ? () => _preguntarPorPieza(p) : null,
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        side: BorderSide(
+                            color: p.stock
+                                ? Colors.greenAccent
+                                : Colors.grey.shade700),
+                      ),
+                      child: Text(
+                        p.stock ? 'Preguntar' : 'Sin inventario',
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: p.stock
+                                ? Colors.greenAccent
+                                : Colors.grey.shade600),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _badge(String texto, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.7),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withOpacity(0.5)),
+      ),
+      child: Text(
+        texto,
+        style: TextStyle(fontSize: 9, color: color),
+      ),
+    );
+  }
+
+  Widget _precioInput(String label, String value, Function(String) onChanged) {
+    return TextField(
+      controller: TextEditingController(text: value)
+        ..selection = TextSelection.collapsed(offset: value.length),
+      keyboardType: TextInputType.number,
+      onChanged: onChanged,
+      style: const TextStyle(color: Colors.white, fontSize: 11),
+      decoration: InputDecoration(
+        isDense: true,
+        labelText: label,
+        labelStyle: const TextStyle(fontSize: 9, color: Colors.grey),
+        filled: true,
+        fillColor: Colors.black,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+}
+
+class _StockBadge extends StatelessWidget {
+  const _StockBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.red.shade900.withOpacity(0.85),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: const Text('Agotado',
+          style: TextStyle(fontSize: 9, color: Colors.white)),
+    );
+  }
+}
