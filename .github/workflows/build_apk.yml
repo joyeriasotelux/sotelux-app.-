@@ -44,8 +44,8 @@ jobs:
 
           subprojects {
               plugins.withId("com.android.library") {
-                  extensions.configure(com.android.build.gradle.LibraryExtension) {
-                      compileSdk = 35
+                  project.android {
+                      compileSdkVersion 35
                   }
               }
           }
