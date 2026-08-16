@@ -206,6 +206,7 @@
 </header>
 
 <div class="tabs" id="tabs"></div>
+<div class="tabs" id="filtroMaterial"></div>
 <div class="grid" id="grid"><p class="empty">Cargando catálogo…</p></div>
 
 <div class="lightbox" id="lightbox">
@@ -220,10 +221,21 @@
 <script>
 const PROJECT_ID = "sotelux-app";
 const WHATSAPP_NUMBER = "573183676909";
-const CATEGORIES = ["Anillos", "Cadenas", "Aretes y Topos", "Pulseras"];
+const CATEGORIES = ["Anillos", "Cadenas", "Aretes y Topos", "Pulseras", "Conjuntos"];
 
 let piezas = [];
 let filtro = "Todos";
+let filtroMaterial = "Todos";
+
+function categoriaMaterial(material) {
+  const set = new Set((material || "").split(",").map(s => s.trim()).filter(Boolean));
+  const oro = set.has("Oro");
+  const plata = set.has("Plata");
+  if (oro && plata) return "Oro y Plata";
+  if (oro) return "Oro";
+  if (plata) return "Plata";
+  return "";
+}
 
 function formatoCOP(valor) {
   const n = Number(valor);
@@ -258,6 +270,7 @@ async function cargarCatalogo() {
     return;
   }
   renderTabs();
+  renderFiltroMaterial();
   render();
 }
 
@@ -277,6 +290,21 @@ function renderTabs() {
   });
 }
 
+function renderFiltroMaterial() {
+  const el = document.getElementById("filtroMaterial");
+  const opciones = ["Todos", "Oro", "Plata", "Oro y Plata"];
+  el.innerHTML = opciones.map(op => {
+    return `<button class="tab mat-tab ${op === filtroMaterial ? 'active' : ''}" data-mat="${op}">${op}</button>`;
+  }).join("");
+  el.querySelectorAll(".mat-tab").forEach(btn => {
+    btn.addEventListener("click", () => {
+      filtroMaterial = btn.dataset.mat;
+      renderFiltroMaterial();
+      render();
+    });
+  });
+}
+
 function preguntarLink(p) {
   const precio = formatoCOP(p.valorVenta);
   const codigo = p.id.substring(0, 6);
@@ -291,7 +319,10 @@ function formatoLista(valor) {
 
 function render() {
   const gridEl = document.getElementById("grid");
-  const visibles = filtro === "Todos" ? piezas : piezas.filter(p => p.categoria === filtro);
+  let visibles = filtro === "Todos" ? piezas : piezas.filter(p => p.categoria === filtro);
+  if (filtroMaterial !== "Todos") {
+    visibles = visibles.filter(p => categoriaMaterial(p.material) === filtroMaterial);
+  }
 
   if (visibles.length === 0) {
     gridEl.innerHTML = '<p class="empty">Aún no hay piezas en esta categoría.</p>';
