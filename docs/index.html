@@ -423,9 +423,9 @@ let filtroMaterial = "Todos";
 
 function categoriaMaterial(material) {
   const texto = (material || "").toLowerCase();
-  const oro = texto.includes("oro");
-  const plata = texto.includes("plata");
-  if (oro && plata) return "Oro y Plata";
+  const oro = texto.includes("Oro 18k");
+  const plata = texto.includes("Plata ley 925");
+  if (oro && plata) return "Mixta";
   if (oro) return "Oro";
   if (plata) return "Plata";
   return "";
@@ -507,7 +507,7 @@ function renderTabs() {
 
 function renderFiltroMaterial() {
   const el = document.getElementById("filtroMaterial");
-  const opciones = ["Todos", "Oro", "Plata", "Oro y Plata"];
+  const opciones = ["Todos", "Oro 18k", "Plata ley 925", "Mixta"];
   el.innerHTML = opciones.map(op => {
     return `<button class="tab mat-tab ${op === filtroMaterial ? 'active' : ''}" data-mat="${op}">${op}</button>`;
   }).join("");
