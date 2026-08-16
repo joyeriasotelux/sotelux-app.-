@@ -915,10 +915,10 @@ class _CatalogoHomeState extends State<CatalogoHome> {
   Widget _buildFiltroMaterial() {
     final opciones = ['Todos', 'Oro', 'Plata', 'Oro y Plata'];
     return SizedBox(
-      height: 36,
+      height: 46,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
         itemCount: opciones.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, i) {
@@ -927,7 +927,8 @@ class _CatalogoHomeState extends State<CatalogoHome> {
           return GestureDetector(
             onTap: () => setState(() => filtroMaterial = op),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: activo ? kGold : Colors.transparent,
                 border: Border.all(color: activo ? kGold : Colors.grey.shade700),
@@ -938,6 +939,7 @@ class _CatalogoHomeState extends State<CatalogoHome> {
                 style: TextStyle(
                   color: activo ? Colors.black : Colors.grey.shade400,
                   fontSize: 11,
+                  height: 1.0,
                 ),
               ),
             ),
