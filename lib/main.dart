@@ -258,8 +258,8 @@ class _CatalogoHomeState extends State<CatalogoHome> {
 
   Future<Uint8List> _generarPdf() async {
     final visibles = filtroCategoria == 'Todos'
-        ? piezas
-        : piezas.where((p) => p.categoria == filtroCategoria).toList();
+        ? piezas.where((p) => p.stock)
+        : piezas.where((p) => p.categoria == filtroCategoria && p.stock);
 
     final doc = pw.Document();
     final imagenes = <String, pw.MemoryImage>{};
@@ -272,57 +272,131 @@ class _CatalogoHomeState extends State<CatalogoHome> {
       } catch (_) {}
     }
 
+    pw.MemoryImage? logoImg;
+    try {
+      final logoData = await rootBundle.load('assets/icon/icon.png');
+      logoImg = pw.MemoryImage(logoData.buffer.asUint8List());
+    } catch (_) {}
+
+    final goldColor = PdfColor.fromHex('#D4AF37');
+    final greyColor = PdfColor.fromHex('#B0B0B0');
+    final cardColor = PdfColor.fromHex('#161616');
+    final greenColor = PdfColor.fromHex('#3DDC84');
+
     final Map<String, List<Pieza>> agrupado = {};
     for (final p in visibles) {
       agrupado.putIfAbsent(p.categoria, () => []).add(p);
     }
 
+    // Portada
     doc.addPage(
-      pw.MultiPage(
+      pw.Page(
         pageFormat: PdfPageFormat.a4,
-        build: (context) => [
-          pw.Header(
-            level: 0,
-            child: pw.Text('Catálogo Sotelux Joyería',
-                style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
+        build: (context) => pw.Container(
+          color: PdfColors.black,
+          alignment: pw.Alignment.center,
+          child: pw.Column(
+            mainAxisAlignment: pw.MainAxisAlignment.center,
+            children: [
+              if (logoImg != null)
+                pw.ClipOval(
+                  child: pw.Image(logoImg, width: 90, height: 90, fit: pw.BoxFit.cover),
+                ),
+              pw.SizedBox(height: 20),
+              pw.Text('CATÁLOGO SOTELUX',
+                  style: pw.TextStyle(
+                      fontSize: 26, fontWeight: pw.FontWeight.bold, color: goldColor)),
+              pw.SizedBox(height: 6),
+              pw.Text('Joyería', style: pw.TextStyle(fontSize: 13, color: PdfColors.white)),
+            ],
           ),
-          for (final entry in agrupado.entries) ...[
-            pw.SizedBox(height: 12),
-            pw.Text(entry.key,
-                style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
-            pw.SizedBox(height: 8),
-            pw.Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: entry.value.map((p) {
-                final precio = _formatoCOP(p.valorVenta);
-                return pw.Container(
-                  width: 150,
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      if (imagenes[p.id] != null)
-                        pw.Container(
-                          height: 150,
-                          width: 150,
-                          decoration: pw.BoxDecoration(
-                              border: pw.Border.all(color: PdfColors.grey300)),
-                          child: pw.Image(imagenes[p.id]!, fit: pw.BoxFit.cover),
-                        ),
-                      pw.SizedBox(height: 4),
-                      pw.Text(
-                        precio.isEmpty ? 'Consultar precio' : precio,
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
-            ),
-          ],
-        ],
+        ),
       ),
     );
+
+    // Páginas por categoría
+    for (final entry in agrupado.entries) {
+      doc.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          theme: pw.ThemeData.withFont(),
+          build: (context) => [
+            pw.Container(
+              color: PdfColors.black,
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Row(
+                    children: [
+                      if (logoImg != null)
+                        pw.ClipOval(
+                            child: pw.Image(logoImg, width: 28, height: 28, fit: pw.BoxFit.cover)),
+                      pw.SizedBox(width: 10),
+                      pw.Text(entry.key.toUpperCase(),
+                          style: pw.TextStyle(
+                              fontSize: 18, fontWeight: pw.FontWeight.bold, color: goldColor)),
+                    ],
+                  ),
+                  pw.SizedBox(height: 4),
+                  pw.Divider(color: goldColor, thickness: 0.7),
+                  pw.SizedBox(height: 12),
+                  pw.Wrap(
+                    spacing: 14,
+                    runSpacing: 14,
+                    children: entry.value.map((p) {
+                      final precio = _formatoCOP(p.valorVenta);
+                      final caract = <String>[
+                        if (p.material.isNotEmpty) formatoLista(p.material),
+                        if (p.piedra.isNotEmpty) formatoLista(p.piedra),
+                        if (p.tamanoPiedra.isNotEmpty) p.tamanoPiedra,
+                        if (p.tamanoTotal.isNotEmpty) 'Tamaño: ${p.tamanoTotal}',
+                      ].join(' · ');
+                      return pw.Container(
+                        width: 155,
+                        padding: const pw.EdgeInsets.all(8),
+                        decoration: pw.BoxDecoration(
+                          color: cardColor,
+                          borderRadius: pw.BorderRadius.circular(6),
+                        ),
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.center,
+                          children: [
+                            if (imagenes[p.id] != null)
+                              pw.ClipRRect(
+                                horizontalRadius: 4,
+                                verticalRadius: 4,
+                                child: pw.Image(imagenes[p.id]!,
+                                    height: 140, width: 139, fit: pw.BoxFit.cover),
+                              ),
+                            pw.SizedBox(height: 6),
+                            pw.Text(
+                              precio.isEmpty ? 'Consultar precio' : precio,
+                              style: pw.TextStyle(
+                                  fontWeight: pw.FontWeight.bold, fontSize: 12, color: goldColor),
+                            ),
+                            if (caract.isNotEmpty) ...[
+                              pw.SizedBox(height: 3),
+                              pw.Text(
+                                caract,
+                                textAlign: pw.TextAlign.center,
+                                style: pw.TextStyle(fontSize: 7, color: greyColor),
+                              ),
+                            ],
+                            pw.SizedBox(height: 3),
+                            pw.Text('● Disponible',
+                                style: pw.TextStyle(fontSize: 7, color: greenColor)),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return doc.save();
   }
