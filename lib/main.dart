@@ -1196,7 +1196,7 @@ class _CatalogoHomeState extends State<CatalogoHome> {
           crossAxisCount: 2,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
-          childAspectRatio: vistaInterna ? 0.56 : 0.72,
+          childAspectRatio: vistaInterna ? 0.46 : 0.72,
         ),
         delegate: SliverChildBuilderDelegate(
           (context, i) => _buildCard(visibles[i]),
@@ -1319,12 +1319,16 @@ class _CatalogoHomeState extends State<CatalogoHome> {
                           ],
                         ),
                       ),
-                      IconButton(
-                        onPressed: () => _editarPrecios(p),
-                        icon: const Icon(Icons.edit, size: 16, color: kGold),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        tooltip: 'Editar precios',
+                      SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: IconButton(
+                          onPressed: () => _editarPrecios(p),
+                          icon: const Icon(Icons.edit, size: 15, color: kGold),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          tooltip: 'Editar precios',
+                        ),
                       ),
                     ],
                   ),
