@@ -43,11 +43,9 @@ jobs:
           cat >> android/build.gradle << 'EOF'
 
           subprojects {
-              afterEvaluate { proj ->
-                  if (proj.hasProperty('android')) {
-                      proj.android {
-                          compileSdk 35
-                      }
+              plugins.withId("com.android.library") {
+                  extensions.configure(com.android.build.gradle.LibraryExtension) {
+                      compileSdk = 35
                   }
               }
           }
